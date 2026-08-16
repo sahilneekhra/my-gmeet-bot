@@ -9,7 +9,32 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 
-app = FastAPI()
+tags_metadata = [
+    {
+        "name": "Health",
+        "description": "Service health and useful entry points.",
+    },
+    {
+        "name": "Authentication",
+        "description": "Google OAuth 2.0 authorization endpoints.",
+    },
+    {
+        "name": "Meetings",
+        "description": "Read Google Meet conference records and artifacts.",
+    },
+]
+
+app = FastAPI(
+    title="Google Meet Bot API",
+    summary="Access Google Meet conference records through a simple API.",
+    description=(
+        "Authorize the application first with **GET /auth**, then use the "
+        "meeting endpoints to retrieve conference records, participants, and "
+        "available transcripts."
+    ),
+    version="0.1.0",
+    openapi_tags=tags_metadata,
+)
 
 CLIENT_SECRET_FILE = "google_client_secret.json"
 TOKEN_FILE = "token.json"
@@ -51,7 +76,12 @@ def get_meet_client():
 def get_conference_name(conference_id):
     return f"conferenceRecords/{conference_id}"
 
-@app.get("/")
+@app.get(
+    "/",
+    tags=["Health"],
+    summary="Get service status",
+    response_description="Service status and API entry points.",
+)
 def home():
     return {
         "message": "Google Meet Bot is running",
@@ -60,7 +90,13 @@ def home():
     }
 
 
-@app.get("/auth")
+@app.get(
+    "/auth",
+    tags=["Authentication"],
+    summary="Start Google authorization",
+    description="Redirects the browser to Google so the user can authorize access.",
+    response_description="Redirect to Google's OAuth consent page.",
+)
 def authenticate():
 
     code_verifier = secrets.token_urlsafe(96)
@@ -78,7 +114,12 @@ def authenticate():
     return RedirectResponse(authorization_url)
 
 
-@app.get("/oauth2callback")
+@app.get(
+    "/oauth2callback",
+    tags=["Authentication"],
+    summary="Complete Google authorization",
+    description="OAuth callback used by Google. Call `/auth` instead of invoking this endpoint directly.",
+)
 def oauth2callback(code: str, state: str):
 
     code_verifier = oauth_states.pop(state, None)
@@ -103,7 +144,12 @@ def oauth2callback(code: str, state: str):
     }
 
 
-@app.get("/meetings")
+@app.get(
+    "/meetings",
+    tags=["Meetings"],
+    summary="List conference records",
+    description="Returns conferences visible to the authorized Google account.",
+)
 def get_meetings():
 
     meet = get_meet_client()
@@ -116,7 +162,12 @@ def get_meetings():
         "count": len(response.get("conferenceRecords", [])),
     }
 
-@app.get("/meetings/{conference_id}")
+@app.get(
+    "/meetings/{conference_id}",
+    tags=["Meetings"],
+    summary="Get a conference record",
+    description="Use the conference ID without the `conferenceRecords/` prefix.",
+)
 def get_meeting(conference_id: str):
 
     meet = get_meet_client()
@@ -129,7 +180,12 @@ def get_meeting(conference_id: str):
 
     return response
 
-@app.get("/meetings/{conference_id}/participants")
+@app.get(
+    "/meetings/{conference_id}/participants",
+    tags=["Meetings"],
+    summary="List conference participants",
+    description="Returns participant records for a conference.",
+)
 def get_participants(conference_id: str):
 
     meet = get_meet_client()
@@ -140,7 +196,12 @@ def get_participants(conference_id: str):
         parent=parent
     ).execute()
 
-@app.get("/meetings/{conference_id}/transcripts")
+@app.get(
+    "/meetings/{conference_id}/transcripts",
+    tags=["Meetings"],
+    summary="List conference transcripts",
+    description="Returns transcripts only when transcription was enabled for the conference.",
+)
 def get_transcripts(conference_id: str):
 
     meet = get_meet_client()
