@@ -10,6 +10,7 @@ router = APIRouter(tags=["Authentication"])
 
 @router.get(
     "/auth",
+    include_in_schema=False,
     summary="Start Google authorization",
     description="Redirects the browser to Google so the user can authorize access.",
     response_description="Redirect to Google's OAuth consent page.",
@@ -20,6 +21,7 @@ def authenticate():
 
 @router.get(
     "/oauth2callback",
+    include_in_schema=False,
     summary="Complete Google authorization",
     description="OAuth callback used by Google. Call `/auth` instead of invoking this endpoint directly.",
     response_model=OAuthSuccessResponse,
