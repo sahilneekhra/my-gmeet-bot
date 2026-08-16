@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# gmeet_secrets
+google_client_secret.json
+token.json
