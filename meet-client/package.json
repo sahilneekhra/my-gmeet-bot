@@ -1,0 +1,26 @@
+{
+  "name": "meet-client",
+  "version": "1.0.0",
+  "description": "Google Meet Media API WebRTC client for bot joining and audio capture",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "google-meet",
+    "webrtc",
+    "bot",
+    "transcription"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0"
+  }
+}

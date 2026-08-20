@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Meet Bot — WebRTC Client</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 2rem; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 1.5rem; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+    .label-row { display: flex; justify-content: space-between; align-items: center; }
+    label { font-size: 0.875rem; color: var(--text-muted); }
+    .auth-link { font-size: 0.8rem; color: var(--accent); text-decoration: none; cursor: pointer; }
+    .auth-link:hover { text-decoration: underline; }
+    .input-with-btn { display: flex; gap: 0.5rem; }
+    input { flex: 1; background: #0f172a; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 0.75rem 1rem; font-size: 0.95rem; }
+    input:focus { outline: none; border-color: var(--accent); }
+    .actions { display: flex; gap: 1rem; }
+    button { padding: 0.75rem 1.25rem; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-secondary { background: #334155; color: var(--text); font-size: 0.85rem; }
+    .btn-danger { background: var(--danger); color: white; }
+    .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+    .badge-disconnected { background: #334155; color: #94a3b8; }
+    .badge-initializing { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+    .badge-waiting { background: rgba(59, 130, 246, 0.2); color: var(--accent); }
+    .badge-joined { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+    .log-box { background: #0b1120; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; height: 220px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; }
+    .log-line { margin-bottom: 0.25rem; word-break: break-all; }
+    .log-info { color: #93c5fd; }
+    .log-warn { color: #fde047; }
+    .log-error { color: #fca5a5; }
+    .log-debug { color: #64748b; }
+    ul { list-style: none; padding-left: 0; }
+    li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+    .empty-text { color: var(--text-muted); font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Google Meet Bot — WebRTC Client</h1>
+    
+    <div class="card">
+      <div class="form-group">
+        <label for="meeting-space">Google Meet URL or Space Code</label>
+        <input type="text" id="meeting-space" placeholder="e.g. abc-defg-hij or https://meet.google.com/abc-defg-hij" />
+      </div>
+      <div class="form-group">
+        <div class="label-row">
+          <label for="access-token">Google OAuth Access Token</label>
+          <a href="http://localhost:8000/auth" target="_blank" class="auth-link">Re-authenticate at /auth &nearr;</a>
+        </div>
+        <div class="input-with-btn">
+          <input type="password" id="access-token" placeholder="Auto-fetching or paste token..." />
+          <button id="fetch-token-btn" class="btn-secondary" type="button">Auto-fetch Token</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="join-btn" class="btn-primary">Join Meeting</button>
+        <button id="leave-btn" class="btn-danger" disabled>Leave Meeting</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="status-row">
+        <h3>Live Session Status</h3>
+        <span id="status-badge" class="badge badge-disconnected">DISCONNECTED</span>
+      </div>
+      <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">Participants</h4>
+      <ul id="participants-list">
+        <li class="empty-text">No active session.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom: 0.75rem;">Connection Logs</h3>
+      <div id="log-area" class="log-box"></div>
+    </div>
+
+    <div id="audio-container" style="display: none;"></div>
+  </div>
+
+  <script type="module" src="/src/demo.ts"></script>
+</body>
+</html>
