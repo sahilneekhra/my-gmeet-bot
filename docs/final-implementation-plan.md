@@ -51,30 +51,17 @@ The application is structured into two core decoupled subsystems:
   - **`AudioSink.ts`**: Captures incoming WebRTC audio tracks (`MediaStreamTrack`) for downstream processing.
 - [x] Built interactive Web test UI (`index.html` + `demo.ts` with Vite) for joining meetings, monitoring logs, and viewing active participants.
 
+### Milestone 3: Streaming Speech-to-Text (STT) Engine & Live UI
+- [x] Designed high-performance audio resampler & PCM converter in `AudioProcessor.ts` (downsamples Web Audio Float32 to 16kHz 16-bit Linear PCM with real-time RMS volume metering).
+- [x] Built `TranscriptionPipeline.ts` orchestrating multiple incoming WebRTC audio tracks, speaker attribution via `ParticipantManager`, and continuous streaming to STT engines.
+- [x] Built modular STT engines:
+  - **`DeepgramSTTEngine.ts`**: Real-time WebSocket streaming with subprotocol auth, Nova-2 model, interim/final results, and word-level timestamps.
+  - **`WebSpeechSTTEngine.ts`**: Zero-config browser-native fallback for Chrome/Edge.
+- [x] Built modern real-time Web UI (`index.html` + `demo.ts`) with live speaker transcripts, interim speech bubbles, VU meters per participant, copy/clear transcript actions, and OAuth token auto-fetch.
+
 ---
 
 ## 3. Remaining Implementation Phases
-
-### Phase 3 — Streaming Speech-to-Text (STT) Engine
-**Goal**: Ingest live audio streams from `AudioSink` and convert them to text in real time with speaker labels.
-
-```text
-WebRTC AudioTrack ──► AudioSink ──► AudioProcessor (PCM 16kHz)
-                                           │
-                                           ▼
-                                Streaming STT Engine
-                            (Google Cloud STT / Deepgram)
-                                           │
-                                           ▼
-                        Final Transcript Segments (with Speaker + Timestamp)
-```
-
-1. Add audio stream resampler / PCM converter in `meet-client/src/audio/AudioProcessor.ts`.
-2. Connect to **Google Cloud Speech-to-Text Streaming API** or **Deepgram Live WebSocket API**.
-3. Correlate incoming audio track with `ParticipantManager.getParticipantByTrackId()` to attach speaker name and timestamps.
-4. Distinguish between temporary interim results and finalized transcript segments.
-
----
 
 ### Phase 4 — Real-Time Transcript Persistence & WebSockets
 **Goal**: Persist transcript segments incrementally and broadcast them live to frontend users.
@@ -161,12 +148,19 @@ my-gmeet-bot/
 ├── meet-client/                # WebRTC Client Service
 │   ├── src/
 │   │   ├── audio/
-│   │   │   └── AudioSink.ts    # WebRTC audio stream receiver
+│   │   │   ├── AudioSink.ts    # WebRTC audio stream receiver
+│   │   │   ├── AudioProcessor.ts # PCM 16kHz resampling & VU volume metering
+│   │   │   └── TranscriptionPipeline.ts # Audio & STT stream coordinator
 │   │   ├── meet/
 │   │   │   ├── MeetClient.ts   # WebRTC peer connection & signaling
 │   │   │   ├── MeetingSession.ts # Session control channel & lifecycle
 │   │   │   ├── ParticipantManager.ts # Speaker attribution & participants
 │   │   │   └── MediaStatsHandler.ts  # Keepalive heartbeats
+│   │   ├── stt/                # Speech-to-Text Engines
+│   │   │   ├── DeepgramSTTEngine.ts  # Deepgram Nova-2 streaming WebSocket
+│   │   │   ├── WebSpeechSTTEngine.ts # Browser native Web Speech API
+│   │   │   ├── types.ts        # STT interfaces & TranscriptSegment model
+│   │   │   └── index.ts        # Engine factory & exports
 │   │   ├── types/
 │   │   │   └── index.ts        # Type definitions
 │   │   ├── demo.ts             # Interactive test runner logic

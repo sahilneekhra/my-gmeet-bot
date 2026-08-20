@@ -1,6 +1,13 @@
 # My Google Meet Bot
 
-A Fireflies-like Google Meet AI bot that connects to live Google Meet conferences via WebRTC, captures audio streams, tracks active speakers, and prepares transcripts for post-meeting AI notes and search.
+A Fireflies-like Google Meet AI bot that connects to live Google Meet conferences via WebRTC, captures audio streams, tracks active speakers, and transcribes speech in real time with Deepgram or browser-native Web Speech API.
+
+### Key Features
+* 🔗 **Direct WebRTC Client**: Connects to Google Meet Media API without third-party bot vendor lock-in.
+* 🎙️ **Audio Processing Pipeline**: 16kHz resampling and Linear PCM conversion with real-time RMS volume metering.
+* ⚡ **Streaming Speech-to-Text (STT)**: Integrated Deepgram Nova-2 WebSocket streaming and zero-config Web Speech API fallback.
+* 👥 **Speaker Attribution**: Maps data-channel participant identities directly to incoming audio streams.
+* 🖥️ **Live Web UI**: Real-time transcript box with interim typing previews, VU meters, copy-to-clipboard, and OAuth token auto-sync.
 
 ---
 
