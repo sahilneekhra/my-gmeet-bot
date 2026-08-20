@@ -80,6 +80,7 @@ uv pip install -r requirements.txt
 
 ## Documentation
 
-* [Final Implementation Plan & Architecture](docs/final-implementation-plan.md)
+* [System Architecture & Scaling Guide](docs/architecture.md)
+* [Final Implementation Plan & Roadmap](docs/final-implementation-plan.md)
 * [Google Cloud & OAuth Prerequisites](docs/google-cloud-setup.md)
 * [Product Future Plan](docs/future-plan.md)
