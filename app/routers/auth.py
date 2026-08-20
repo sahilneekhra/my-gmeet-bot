@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import RedirectResponse
 
 from app.schemas import ErrorResponse, OAuthSuccessResponse
-from app.services.oauth import exchange_code_for_token, get_authorization_url
+from app.services.oauth import exchange_code_for_token, get_authorization_url, get_current_token
 
 
 router = APIRouter(tags=["Authentication"])
@@ -30,3 +30,13 @@ def authenticate():
 def oauth2callback(code: str, state: str):
     exchange_code_for_token(code, state)
     return {"message": "Google OAuth successful!", "token_saved": True}
+
+
+@router.get(
+    "/auth/token",
+    summary="Get active OAuth access token",
+    description="Returns the currently active Google OAuth access token for WebRTC / bot client.",
+)
+def get_token():
+    token = get_current_token()
+    return {"access_token": token}

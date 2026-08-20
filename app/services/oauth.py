@@ -1,6 +1,9 @@
+import os
 import secrets
 
 from fastapi import HTTPException
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 
 from app.config import CLIENT_SECRET_FILE, REDIRECT_URI, SCOPES, TOKEN_FILE
@@ -44,3 +47,19 @@ def exchange_code_for_token(code: str, state: str) -> None:
 
     with open(TOKEN_FILE, "w") as token:
         token.write(flow.credentials.to_json())
+
+
+def get_current_token() -> str:
+    if not os.path.exists(TOKEN_FILE):
+        raise HTTPException(status_code=401, detail="Not authenticated. Open /auth first.")
+
+    credentials = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    if not credentials.valid:
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+            with open(TOKEN_FILE, "w") as token:
+                token.write(credentials.to_json())
+        else:
+            raise HTTPException(status_code=401, detail="Token expired. Please re-authenticate at /auth.")
+
+    return credentials.token
