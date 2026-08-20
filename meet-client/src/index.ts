@@ -4,3 +4,6 @@ export * from './meet/MeetingSession';
 export * from './meet/ParticipantManager';
 export * from './meet/MediaStatsHandler';
 export * from './audio/AudioSink';
+export * from './audio/AudioProcessor';
+export * from './audio/TranscriptionPipeline';
+export * from './stt';

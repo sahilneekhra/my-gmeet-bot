@@ -1,4 +1,6 @@
 import { AudioSink } from '../audio/AudioSink';
+import { TranscriptionPipeline } from '../audio/TranscriptionPipeline';
+import { createSTTEngine, STTConfig, TranscriptSegment } from '../stt';
 import { MeetClientConfig } from '../types';
 import { MediaStatsHandler } from './MediaStatsHandler';
 import { MeetingSession } from './MeetingSession';
@@ -16,8 +18,10 @@ export class MeetClient {
   private participantManager?: ParticipantManager;
   private mediaStatsHandler?: MediaStatsHandler;
   private audioSink: AudioSink;
+  private transcriptionPipeline?: TranscriptionPipeline;
 
   private onTrackListeners: Set<(track: MediaStreamTrack, receiver: RTCRtpReceiver) => void> = new Set();
+  private onTranscriptListeners: Set<(segment: TranscriptSegment) => void> = new Set();
 
   constructor(private readonly config: MeetClientConfig) {
     this.audioSink = new AudioSink({}, this.config.logger);
@@ -39,9 +43,63 @@ export class MeetClient {
     return this.audioSink;
   }
 
+  public getTranscriptionPipeline(): TranscriptionPipeline | undefined {
+    return this.transcriptionPipeline;
+  }
+
   public onTrack(listener: (track: MediaStreamTrack, receiver: RTCRtpReceiver) => void): () => void {
     this.onTrackListeners.add(listener);
     return () => this.onTrackListeners.delete(listener);
+  }
+
+  public onTranscript(listener: (segment: TranscriptSegment) => void): () => void {
+    this.onTranscriptListeners.add(listener);
+    return () => this.onTranscriptListeners.delete(listener);
+  }
+
+  /**
+   * Starts real-time Speech-to-Text transcription on incoming audio streams.
+   */
+  public async startTranscription(sttConfig: STTConfig): Promise<TranscriptionPipeline> {
+    if (this.transcriptionPipeline) {
+      await this.stopTranscription();
+    }
+
+    const sttEngine = createSTTEngine({
+      ...sttConfig,
+      logger: this.config.logger,
+    });
+
+    this.transcriptionPipeline = new TranscriptionPipeline(
+      this.audioSink,
+      this.participantManager,
+      sttEngine,
+      {
+        sampleRate: sttConfig.sampleRate || 16000,
+        logger: this.config.logger,
+      }
+    );
+
+    this.transcriptionPipeline.onTranscript((segment) => {
+      for (const listener of this.onTranscriptListeners) {
+        listener(segment);
+      }
+    });
+
+    await this.transcriptionPipeline.start();
+    this.log('info', `Transcription started with STT provider: ${sttConfig.provider}`);
+    return this.transcriptionPipeline;
+  }
+
+  /**
+   * Stops real-time Speech-to-Text transcription.
+   */
+  public async stopTranscription(): Promise<void> {
+    if (this.transcriptionPipeline) {
+      await this.transcriptionPipeline.stop();
+      this.transcriptionPipeline = undefined;
+      this.log('info', 'Transcription stopped.');
+    }
   }
 
   /**
@@ -183,6 +241,8 @@ export class MeetClient {
    * Disconnects the WebRTC peer connection and cleans up all resources.
    */
   public async disconnect(): Promise<void> {
+    await this.stopTranscription();
+
     if (this.mediaStatsHandler) {
       this.mediaStatsHandler.stop();
       this.mediaStatsHandler = undefined;
