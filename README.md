@@ -80,7 +80,11 @@ uv pip install -r requirements.txt
 
 ## Documentation
 
+* [Technical Glossary & Concepts Guide](docs/glossary.md) *(Beginner-friendly explanations of WebRTC, STT, SDP, PCM, etc.)*
+* [Engineering Strategies & Architectural Decisions](docs/strategies-and-decisions.md) *(Deep dive into all technical tradeoffs, why we chose what, and rejected alternatives)*
+* [Learning Resources, RFC Standards & References](docs/references.md) *(Curated books, RFC specs, official documentation, and reading list)*
 * [System Architecture & Scaling Guide](docs/architecture.md)
+* [Interactive Architecture & Flow Explorer](docs/architecture.html) *(Visual browser-based block diagram and lifecycle simulator)*
 * [Final Implementation Plan & Roadmap](docs/final-implementation-plan.md)
 * [Google Cloud & OAuth Prerequisites](docs/google-cloud-setup.md)
 * [Product Future Plan](docs/future-plan.md)

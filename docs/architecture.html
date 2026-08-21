@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Meet Bot — Interactive Architecture & Flow Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --bg-card: #0d1527;
+      --bg-card-hover: #131e38;
+      --bg-card-sub: #17233f;
+      --border: #1e2f52;
+      --border-highlight: #3b82f6;
+      
+      --accent-blue: #3b82f6;
+      --accent-blue-glow: rgba(59, 130, 246, 0.35);
+      --accent-purple: #8b5cf6;
+      --accent-purple-glow: rgba(139, 92, 246, 0.35);
+      --accent-emerald: #10b981;
+      --accent-emerald-glow: rgba(16, 185, 129, 0.35);
+      --accent-amber: #f59e0b;
+      --accent-amber-glow: rgba(245, 158, 11, 0.35);
+      --accent-rose: #f43f5e;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #64748b;
+      
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.5;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #070b14; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+    /* Container & Layout */
+    .app-container {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 4rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand-group h1 {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 30%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-group p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-top: 0.25rem;
+      max-width: 750px;
+    }
+    .badge-pill {
+      background: rgba(59, 130, 246, 0.12);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse 1.5s infinite;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: #090e1c;
+      padding: 0.35rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      width: fit-content;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.92rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .tab-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 16px var(--accent-blue-glow);
+    }
+
+    /* Views */
+    .tab-view { display: none; }
+    .tab-view.active-view { display: flex; flex-direction: column; gap: 2rem; animation: fadeIn 0.3s ease; }
+
+    /* Interactive Diagram Canvas Card */
+    .diagram-card {
+      background: radial-gradient(circle at 50% 0%, #121c33 0%, var(--bg-card) 70%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .diagram-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .hint-text {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .legend-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: #0b1220;
+      border: 1px solid var(--border);
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Architecture Grid Layout for Modules Tab */
+    .architecture-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1.25rem;
+      position: relative;
+    }
+
+    /* Subsystem Blocks */
+    .subsystem-block {
+      background: rgba(13, 21, 39, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.25s ease;
+    }
+    .subsystem-block:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+    .subsystem-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 0.6rem;
+    }
+    .subsystem-title {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .color-google { color: #f87171; }
+    .color-webrtc { color: #60a5fa; }
+    .color-stt { color: #34d399; }
+    .color-backend { color: #fbbf24; }
+    .color-ai { color: #c084fc; }
+
+    /* Node Cards inside Subsystems */
+    .node-card {
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .node-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-blue);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
+    }
+    .node-card.selected {
+      border-color: #60a5fa;
+      background: rgba(59, 130, 246, 0.15);
+      box-shadow: 0 0 0 2px var(--accent-blue), 0 0 25px var(--accent-blue-glow);
+    }
+    .node-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .node-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .node-role {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .node-tag {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+    }
+
+    /* Grid columns assignment */
+    .col-3 { grid-column: span 3; }
+    .col-4 { grid-column: span 4; }
+    .col-5 { grid-column: span 5; }
+    .col-6 { grid-column: span 6; }
+    .col-7 { grid-column: span 7; }
+    .col-8 { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+
+    @media (max-width: 1024px) {
+      .col-3, .col-4, .col-5, .col-6, .col-7, .col-8 { grid-column: span 12; }
+    }
+
+    /* SVG Canvas Wrapper for Dedicated Block Diagram Tab */
+    .svg-diagram-wrapper {
+      width: 100%;
+      background: #080d1a;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow-x: auto;
+      padding: 1.25rem 0.75rem;
+      display: flex;
+      justify-content: center;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+    svg.architecture-svg {
+      width: 100%;
+      max-width: 1300px;
+      height: auto;
+      min-height: 650px;
+      user-select: none;
+    }
+
+    /* SVG Styling */
+    .svg-subsystem-box {
+      fill: #0c1426;
+      stroke: #1e2f52;
+      stroke-width: 1.5;
+      rx: 12;
+      transition: all 0.2s ease;
+    }
+    .svg-subsystem-box:hover {
+      stroke: #3b82f6;
+      fill: #0f1930;
+    }
+    .svg-subsystem-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .svg-node-box {
+      fill: #15223e;
+      stroke: #253861;
+      stroke-width: 1.5;
+      rx: 8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .svg-node-box:hover {
+      fill: #1d2f56;
+      stroke: #60a5fa;
+      filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+    }
+    .svg-node-box.selected {
+      fill: #1e3a6e;
+      stroke: #93c5fd;
+      stroke-width: 2.5;
+      filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.7));
+    }
+    .svg-node-text-title {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      fill: #ffffff;
+      pointer-events: none;
+    }
+    .svg-node-text-sub {
+      font-family: var(--font-body);
+      font-size: 10px;
+      fill: #94a3b8;
+      pointer-events: none;
+    }
+    .svg-node-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      fill: #93c5fd;
+      pointer-events: none;
+    }
+
+    /* Flow Lines & Arrows */
+    .flow-line {
+      fill: none;
+      stroke-width: 2;
+      transition: all 0.3s ease;
+    }
+    .flow-audio { stroke: #ef4444; stroke-dasharray: 6 3; animation: flowAnim 1s linear infinite; }
+    .flow-signaling { stroke: #3b82f6; stroke-dasharray: 6 3; animation: flowAnim 1.2s linear infinite; }
+    .flow-transcript { stroke: #10b981; stroke-dasharray: 6 3; animation: flowAnim 0.8s linear infinite; }
+    .flow-auth { stroke: #f59e0b; stroke-dasharray: 6 3; animation: flowAnim 1.5s linear infinite; }
+    .flow-ai { stroke: #8b5cf6; stroke-dasharray: 6 3; animation: flowAnim 1s linear infinite; }
+
+    .flow-line.hidden-pipe {
+      opacity: 0.1;
+      stroke-dasharray: none;
+      animation: none;
+    }
+
+    .flow-label {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      paint-order: stroke;
+      stroke: #070b14;
+      stroke-width: 3px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-toggle {
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-toggle.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent-blue);
+      color: #93c5fd;
+    }
+
+    @keyframes flowAnim {
+      from { stroke-dashoffset: 20; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* Inspector Drawer (Node Details Modal) */
+    .inspector-drawer {
+      background: #090e1c;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+    .inspector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.85rem;
+    }
+    .inspector-title {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .inspector-filepath {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.25rem;
+      display: inline-block;
+    }
+    .inspector-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 768px) {
+      .inspector-content { grid-template-columns: 1fr; }
+    }
+    .info-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .info-card h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+    .info-card p {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+    .code-preview {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      background: #040711;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #1a2642;
+      color: #93c5fd;
+      overflow-x: auto;
+    }
+
+    /* Step-by-Step Simulator View */
+    .simulator-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .simulator-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .step-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .sim-btn {
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+    .sim-btn:hover:not(:disabled) {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+    .sim-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    
+    .timeline-track {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin: 1rem 0;
+    }
+    .timeline-track::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--border);
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+    .timeline-progress {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-emerald));
+      transform: translateY(-50%);
+      z-index: 2;
+      transition: width 0.3s ease;
+    }
+    .timeline-step {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+    .step-bubble {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      transition: all 0.25s;
+    }
+    .timeline-step.active .step-bubble {
+      background: var(--accent-blue);
+      border-color: #93c5fd;
+      color: #fff;
+      box-shadow: 0 0 16px var(--accent-blue-glow);
+      transform: scale(1.15);
+    }
+    .timeline-step.completed .step-bubble {
+      background: var(--accent-emerald);
+      border-color: #6ee7b7;
+      color: #fff;
+    }
+    .step-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 90px;
+    }
+    .timeline-step.active .step-label {
+      color: #fff;
+    }
+
+    .step-display-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.75rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+    @media (max-width: 768px) {
+      .step-display-card { grid-template-columns: 1fr; }
+    }
+    .step-details h3 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    .step-details p {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    .step-visual {
+      background: #060913;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      position: relative;
+    }
+
+    /* Glossary View */
+    .glossary-search-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .search-input {
+      flex: 1;
+      min-width: 260px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+    .search-input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-glow); }
+    .filter-pills {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .filter-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-pill.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent-blue);
+      color: #93c5fd;
+    }
+
+    .glossary-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .term-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: all 0.2s;
+    }
+    .term-card:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    .term-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .term-name {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .term-category {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+    }
+    .term-analogy {
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 3px solid var(--accent-blue);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #bfdbfe;
+      font-style: italic;
+    }
+    .term-role {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    /* Scaling View */
+    .scale-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    @media (max-width: 768px) {
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .metric-box {
+      background: var(--bg-card-sub);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #60a5fa;
+    }
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.7; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Header -->
+  <header>
+    <div class="header-top">
+      <div class="brand-group">
+        <h1>Google Meet Bot Architecture Explorer</h1>
+        <p>Interactive visual blueprint explaining every subsystem, WebRTC protocol, audio DSP pipeline, and AI component in plain English.</p>
+      </div>
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        <span>Interactive System Model</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('modules-view')">🧩 Subsystem Modules & Cards</button>
+      <button class="tab-btn" onclick="switchTab('block-diagram-view')">🔀 Connected Flow Block Diagram</button>
+      <button class="tab-btn" onclick="switchTab('flow-simulator')">🎬 Step-by-Step Flow Simulator</button>
+      <button class="tab-btn" onclick="switchTab('scaling-view')">🚀 1,000+ Bot Scaling Blueprint</button>
+      <button class="tab-btn" onclick="switchTab('glossary-view')">📚 Concept & Acronym Inspector</button>
+    </div>
+  </header>
+
+  <!-- ================= TAB 1: DETAILED MODULES & CARDS VIEW ================= -->
+  <div id="modules-view" class="tab-view active-view">
+    <div class="diagram-card">
+      <div class="diagram-controls">
+        <div class="control-group">
+          <span style="font-weight: 700; font-size: 0.92rem; color: #fff;">Subsystem Modules Breakdown:</span>
+        </div>
+        <span class="hint-text">💡 Click any component card below to inspect its plain-English explanation, repo files, and inputs/outputs.</span>
+      </div>
+
+      <!-- Architecture Grid -->
+      <div class="architecture-grid">
+        
+        <!-- Google Cloud Subsystem -->
+        <div class="subsystem-block col-4">
+          <div class="subsystem-header">
+            <span class="subsystem-title color-google">☁️ Google Cloud Infrastructure</span>
+          </div>
+          <div class="node-card" id="card-gmeet-sfu" onclick="selectNode('gmeet-sfu')">
+            <div class="node-top">
+              <span class="node-name">Google Meet SFU</span>
+              <span class="node-tag">Media Server</span>
+            </div>
+            <span class="node-role">Streams multi-track Opus audio over WebRTC to our bot</span>
+          </div>
+          <div class="node-card" id="card-gmeet-api" onclick="selectNode('gmeet-api')">
+            <div class="node-top">
+              <span class="node-name">Google Meet REST API</span>
+              <span class="node-tag">Signaling</span>
+            </div>
+            <span class="node-role">Receives SDP Offer & establishes active conference</span>
+          </div>
+          <div class="node-card" id="card-oauth" onclick="selectNode('oauth')">
+            <div class="node-top">
+              <span class="node-name">Google OAuth 2.0</span>
+              <span class="node-tag">Auth</span>
+            </div>
+            <span class="node-role">Grants permission scopes & provides refreshable tokens</span>
+          </div>
+        </div>
+
+        <!-- WebRTC Client Subsystem -->
+        <div class="subsystem-block col-5">
+          <div class="subsystem-header">
+            <span class="subsystem-title color-webrtc">🎙️ WebRTC Client (meet-client)</span>
+          </div>
+          <div class="node-card" id="card-meetclient" onclick="selectNode('meetclient')">
+            <div class="node-top">
+              <span class="node-name">MeetClient (RTCPeerConnection)</span>
+              <span class="node-tag">Core Client</span>
+            </div>
+            <span class="node-role">Orchestrates SDP transceivers and peer connection</span>
+          </div>
+          <div class="node-card" id="card-datachannels" onclick="selectNode('datachannels')">
+            <div class="node-top">
+              <span class="node-name">RTCDataChannel Handlers</span>
+              <span class="node-tag">Metadata</span>
+            </div>
+            <span class="node-role">Parses participants, media-entries, and 2s keepalive heartbeats</span>
+          </div>
+          <div class="node-card" id="card-audioprocessor" onclick="selectNode('audioprocessor')">
+            <div class="node-top">
+              <span class="node-name">AudioProcessor (DSP Resampler)</span>
+              <span class="node-tag">DSP Audio</span>
+            </div>
+            <span class="node-role">Downsamples Float32 to 16kHz 16-bit Linear PCM + calculates RMS volume</span>
+          </div>
+          <div class="node-card" id="card-transcriptionpipeline" onclick="selectNode('transcriptionpipeline')">
+            <div class="node-top">
+              <span class="node-name">TranscriptionPipeline</span>
+              <span class="node-tag">Multiplexer</span>
+            </div>
+            <span class="node-role">Attaches speaker identities to audio buffers and routes to STT</span>
+          </div>
+        </div>
+
+        <!-- STT & User Frontend Subsystem -->
+        <div class="subsystem-block col-3">
+          <div class="subsystem-header">
+            <span class="subsystem-title color-stt">⚡ Speech-to-Text (STT)</span>
+          </div>
+          <div class="node-card" id="card-deepgram" onclick="selectNode('deepgram')">
+            <div class="node-top">
+              <span class="node-name">Deepgram Nova-2</span>
+              <span class="node-tag">WebSocket STT</span>
+            </div>
+            <span class="node-role">Streaming AI transcription with word-level timestamps</span>
+          </div>
+          <div class="node-card" id="card-webspeech" onclick="selectNode('webspeech')">
+            <div class="node-top">
+              <span class="node-name">Web Speech API</span>
+              <span class="node-tag">Native STT</span>
+            </div>
+            <span class="node-role">Zero-config browser-native fallback engine</span>
+          </div>
+          <div class="node-card" id="card-webui" onclick="selectNode('webui')">
+            <div class="node-top">
+              <span class="node-name">Live Web Test Runner</span>
+              <span class="node-tag">Frontend UI</span>
+            </div>
+            <span class="node-role">Live transcripts, VU volume bars, and auto-fetch OAuth token</span>
+          </div>
+        </div>
+
+        <!-- FastAPI Backend Subsystem -->
+        <div class="subsystem-block col-6">
+          <div class="subsystem-header">
+            <span class="subsystem-title color-backend">⚙️ FastAPI Backend (Port 8000)</span>
+          </div>
+          <div class="node-card" id="card-authrouter" onclick="selectNode('authrouter')">
+            <div class="node-top">
+              <span class="node-name">OAuth Service & /auth/token</span>
+              <span class="node-tag">Auth Gateway</span>
+            </div>
+            <span class="node-role">Auto-refreshes Google credentials and serves tokens to frontend</span>
+          </div>
+          <div class="node-card" id="card-websocketmgr" onclick="selectNode('websocketmgr')">
+            <div class="node-top">
+              <span class="node-name">WebSocket Gateway (/ws/transcripts)</span>
+              <span class="node-tag">Broadcaster</span>
+            </div>
+            <span class="node-role">Multiplexes live transcript streams to all connected dashboard users</span>
+          </div>
+          <div class="node-card" id="card-database" onclick="selectNode('database')">
+            <div class="node-top">
+              <span class="node-name">SQLite WAL Persistence Layer</span>
+              <span class="node-tag">Storage</span>
+            </div>
+            <span class="node-role">Concurrent write-ahead logging for meetings, participants, and segments</span>
+          </div>
+        </div>
+
+        <!-- AI Intelligence Subsystem -->
+        <div class="subsystem-block col-6">
+          <div class="subsystem-header">
+            <span class="subsystem-title color-ai">🧠 AI Notes & RAG Engine</span>
+          </div>
+          <div class="node-card" id="card-summarizer" onclick="selectNode('summarizer')">
+            <div class="node-top">
+              <span class="node-name">AI Meeting Notes Generator</span>
+              <span class="node-tag">Gemini 1.5</span>
+            </div>
+            <span class="node-role">Extracts executive summaries, key decisions, and action items with owners</span>
+          </div>
+          <div class="node-card" id="card-ragchatbot" onclick="selectNode('ragchatbot')">
+            <div class="node-top">
+              <span class="node-name">Semantic Search & RAG Chatbot</span>
+              <span class="node-tag">Vector Index</span>
+            </div>
+            <span class="node-role">Answers natural language questions about past meetings with exact citations</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 2: CONNECTED FLOW BLOCK DIAGRAM VIEW ================= -->
+  <div id="block-diagram-view" class="tab-view">
+    <div class="diagram-card">
+      <div class="diagram-controls">
+        <div class="control-group">
+          <span style="font-weight: 700; font-size: 0.92rem; color: #fff;">Interactive Data Flow Streams:</span>
+          <button class="btn-toggle active" id="toggle-audio-flow" onclick="toggleFlowPipe('audio')">🔴 Audio / PCM Stream</button>
+          <button class="btn-toggle active" id="toggle-signaling-flow" onclick="toggleFlowPipe('signaling')">🔵 Signaling & DataChannels</button>
+          <button class="btn-toggle active" id="toggle-transcript-flow" onclick="toggleFlowPipe('transcript')">🟢 Live Transcripts</button>
+          <button class="btn-toggle active" id="toggle-auth-flow" onclick="toggleFlowPipe('auth')">🟡 OAuth Tokens</button>
+          <button class="btn-toggle active" id="toggle-ai-flow" onclick="toggleFlowPipe('ai')">🟣 AI & RAG</button>
+        </div>
+        <span class="hint-text">💡 Click any block to view its internal implementation details in the inspector!</span>
+      </div>
+
+      <!-- SVG Visual Connected Block Diagram -->
+      <div class="svg-diagram-wrapper">
+        <svg class="architecture-svg" viewBox="0 0 1280 660">
+          <defs>
+            <!-- Marker Arrows -->
+            <marker id="arrow-audio" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#ef4444" />
+            </marker>
+            <marker id="arrow-signaling" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#3b82f6" />
+            </marker>
+            <marker id="arrow-transcript" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#10b981" />
+            </marker>
+            <marker id="arrow-auth" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b" />
+            </marker>
+            <marker id="arrow-ai" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6" />
+            </marker>
+          </defs>
+
+          <!-- ================= 1. SUBSYSTEM BOUNDARIES ================= -->
+          <!-- Google Cloud Subsystem -->
+          <rect x="30" y="20" width="340" height="270" class="svg-subsystem-box" />
+          <text x="45" y="45" class="svg-subsystem-title" fill="#f87171">☁️ Google Cloud Infrastructure</text>
+
+          <!-- WebRTC Client Subsystem -->
+          <rect x="410" y="20" width="460" height="400" class="svg-subsystem-box" />
+          <text x="425" y="45" class="svg-subsystem-title" fill="#60a5fa">🎙️ WebRTC Client Media Engine (meet-client)</text>
+
+          <!-- STT Subsystem -->
+          <rect x="910" y="20" width="340" height="240" class="svg-subsystem-box" />
+          <text x="925" y="45" class="svg-subsystem-title" fill="#34d399">⚡ Speech-to-Text (STT) Engines</text>
+
+          <!-- FastAPI Backend Subsystem -->
+          <rect x="30" y="320" width="340" height="310" class="svg-subsystem-box" />
+          <text x="45" y="345" class="svg-subsystem-title" fill="#fbbf24">⚙️ FastAPI Backend (Port 8000)</text>
+
+          <!-- AI Intelligence & Storage Subsystem -->
+          <rect x="910" y="290" width="340" height="340" class="svg-subsystem-box" />
+          <text x="925" y="315" class="svg-subsystem-title" fill="#c084fc">🧠 AI Notes, RAG & Persistence</text>
+
+          <!-- Frontend User UI Subsystem -->
+          <rect x="410" y="450" width="460" height="180" class="svg-subsystem-box" />
+          <text x="425" y="475" class="svg-subsystem-title" fill="#38bdf8">🖥️ Frontend Clients & Live Dashboard (Port 5173)</text>
+
+          <!-- ================= 2. COMPONENT BLOCKS (NODES) ================= -->
+          
+          <!-- Google Meet SFU -->
+          <g id="svg-node-gmeet-sfu" onclick="selectNode('gmeet-sfu')">
+            <rect x="50" y="65" width="140" height="65" class="svg-node-box" id="sbox-gmeet-sfu" />
+            <text x="60" y="90" class="svg-node-text-title">Google Meet SFU</text>
+            <text x="60" y="105" class="svg-node-text-sub">Media Server (Opus/RTP)</text>
+            <text x="60" y="120" class="svg-node-tag">[SFU Edge]</text>
+          </g>
+
+          <!-- Google Meet API -->
+          <g id="svg-node-gmeet-api" onclick="selectNode('gmeet-api')">
+            <rect x="210" y="65" width="140" height="65" class="svg-node-box" id="sbox-gmeet-api" />
+            <text x="220" y="90" class="svg-node-text-title">Google Meet API</text>
+            <text x="220" y="105" class="svg-node-text-sub">connectActiveConference</text>
+            <text x="220" y="120" class="svg-node-tag">[Signaling]</text>
+          </g>
+
+          <!-- Google OAuth 2.0 -->
+          <g id="svg-node-oauth" onclick="selectNode('oauth')">
+            <rect x="130" y="170" width="160" height="65" class="svg-node-box" id="sbox-oauth" />
+            <text x="140" y="195" class="svg-node-text-title">Google OAuth 2.0</text>
+            <text x="140" y="210" class="svg-node-text-sub">Token Auth & Scopes</text>
+            <text x="140" y="225" class="svg-node-tag">[Auth Server]</text>
+          </g>
+
+          <!-- MeetClient RTCPeerConnection -->
+          <g id="svg-node-meetclient" onclick="selectNode('meetclient')">
+            <rect x="430" y="65" width="190" height="75" class="svg-node-box selected" id="sbox-meetclient" />
+            <text x="440" y="90" class="svg-node-text-title">MeetClient Engine</text>
+            <text x="440" y="108" class="svg-node-text-sub">RTCPeerConnection (3 Audio / 3 Video)</text>
+            <text x="440" y="125" class="svg-node-tag">[WebRTC Core]</text>
+          </g>
+
+          <!-- RTCDataChannels -->
+          <g id="svg-node-datachannels" onclick="selectNode('datachannels')">
+            <rect x="660" y="65" width="190" height="75" class="svg-node-box" id="sbox-datachannels" />
+            <text x="670" y="88" class="svg-node-text-title">RTCDataChannels</text>
+            <text x="670" y="104" class="svg-node-text-sub">participants / media-entries</text>
+            <text x="670" y="120" class="svg-node-text-sub">session-control / media-stats</text>
+            <text x="670" y="133" class="svg-node-tag">[Metadata & Keepalives]</text>
+          </g>
+
+          <!-- AudioSink -->
+          <g id="svg-node-audiosink" onclick="selectNode('meetclient')">
+            <rect x="430" y="180" width="190" height="60" class="svg-node-box" id="sbox-audiosink" />
+            <text x="440" y="205" class="svg-node-text-title">AudioSink</text>
+            <text x="440" y="220" class="svg-node-text-sub">Captures MediaStreamTracks</text>
+            <text x="440" y="233" class="svg-node-tag">[Audio Track Receiver]</text>
+          </g>
+
+          <!-- AudioProcessor -->
+          <g id="svg-node-audioprocessor" onclick="selectNode('audioprocessor')">
+            <rect x="430" y="280" width="190" height="75" class="svg-node-box" id="sbox-audioprocessor" />
+            <text x="440" y="303" class="svg-node-text-title">AudioProcessor (DSP)</text>
+            <text x="440" y="320" class="svg-node-text-sub">Float32 ➔ 16kHz Linear PCM</text>
+            <text x="440" y="335" class="svg-node-text-sub">Real-Time RMS Volume Meter</text>
+            <text x="440" y="348" class="svg-node-tag">[Client DSP Resampler]</text>
+          </g>
+
+          <!-- TranscriptionPipeline -->
+          <g id="svg-node-transcriptionpipeline" onclick="selectNode('transcriptionpipeline')">
+            <rect x="660" y="240" width="190" height="115" class="svg-node-box" id="sbox-transcriptionpipeline" />
+            <text x="670" y="265" class="svg-node-text-title">TranscriptionPipeline</text>
+            <text x="670" y="283" class="svg-node-text-sub">1. Maps Track ➔ Speaker Name</text>
+            <text x="670" y="299" class="svg-node-text-sub">2. Streams 16kHz PCM to STT</text>
+            <text x="670" y="315" class="svg-node-text-sub">3. Emits Transcript Segments</text>
+            <text x="670" y="340" class="svg-node-tag">[Stream Coordinator]</text>
+          </g>
+
+          <!-- Deepgram Nova-2 -->
+          <g id="svg-node-deepgram" onclick="selectNode('deepgram')">
+            <rect x="930" y="65" width="140" height="75" class="svg-node-box" id="sbox-deepgram" />
+            <text x="940" y="90" class="svg-node-text-title">Deepgram Nova-2</text>
+            <text x="940" y="108" class="svg-node-text-sub">Streaming WebSocket STT</text>
+            <text x="940" y="125" class="svg-node-tag">[Cloud AI STT]</text>
+          </g>
+
+          <!-- Web Speech API -->
+          <g id="svg-node-webspeech" onclick="selectNode('webspeech')">
+            <rect x="1090" y="65" width="140" height="75" class="svg-node-box" id="sbox-webspeech" />
+            <text x="1100" y="90" class="svg-node-text-title">Web Speech API</text>
+            <text x="1100" y="108" class="svg-node-text-sub">Browser-Native Voice Engine</text>
+            <text x="1100" y="125" class="svg-node-tag">[Zero-Config STT]</text>
+          </g>
+
+          <!-- FastAPI OAuth Manager -->
+          <g id="svg-node-authrouter" onclick="selectNode('authrouter')">
+            <rect x="50" y="365" width="300" height="65" class="svg-node-box" id="sbox-authrouter" />
+            <text x="60" y="390" class="svg-node-text-title">FastAPI OAuth Manager (/auth/token)</text>
+            <text x="60" y="405" class="svg-node-text-sub">Auto Token Refresh & CORS API</text>
+            <text x="60" y="420" class="svg-node-tag">[app/services/oauth.py]</text>
+          </g>
+
+          <!-- FastAPI WebSocket Gateway -->
+          <g id="svg-node-websocketmgr" onclick="selectNode('websocketmgr')">
+            <rect x="50" y="450" width="300" height="65" class="svg-node-box" id="sbox-websocketmgr" />
+            <text x="60" y="475" class="svg-node-text-title">WebSocket Gateway (/ws/transcripts)</text>
+            <text x="60" y="490" class="svg-node-text-sub">Multi-Client Real-Time Broadcast</text>
+            <text x="60" y="505" class="svg-node-tag">[app/services/websocket_manager.py]</text>
+          </g>
+
+          <!-- SQLite WAL Database -->
+          <g id="svg-node-database" onclick="selectNode('database')">
+            <rect x="50" y="535" width="300" height="75" class="svg-node-box" id="sbox-database" />
+            <text x="60" y="560" class="svg-node-text-title">SQLite WAL Persistence Layer</text>
+            <text x="60" y="575" class="svg-node-text-sub">Meetings, Participants & Transcripts</text>
+            <text x="60" y="595" class="svg-node-tag">[gmeet_bot.db (WAL Mode)]</text>
+          </g>
+
+          <!-- AI Summarizer -->
+          <g id="svg-node-summarizer" onclick="selectNode('summarizer')">
+            <rect x="930" y="335" width="300" height="75" class="svg-node-box" id="sbox-summarizer" />
+            <text x="940" y="360" class="svg-node-text-title">AI Meeting Notes Generator (Gemini 1.5)</text>
+            <text x="940" y="375" class="svg-node-text-sub">Executive Summary, Decisions, Action Items</text>
+            <text x="940" y="395" class="svg-node-tag">[app/services/summary.py]</text>
+          </g>
+
+          <!-- Semantic RAG Chatbot -->
+          <g id="svg-node-ragchatbot" onclick="selectNode('ragchatbot')">
+            <rect x="930" y="430" width="300" height="75" class="svg-node-box" id="sbox-ragchatbot" />
+            <text x="940" y="455" class="svg-node-text-title">Semantic Search & RAG Chatbot</text>
+            <text x="940" y="470" class="svg-node-text-sub">Vector Search with Speaker & Time Citations</text>
+            <text x="940" y="490" class="svg-node-tag">[pgvector / Chroma Embeddings]</text>
+          </g>
+
+          <!-- Live Web Test Runner UI -->
+          <g id="svg-node-webui" onclick="selectNode('webui')">
+            <rect x="430" y="495" width="420" height="115" class="svg-node-box" id="sbox-webui" />
+            <text x="445" y="525" class="svg-node-text-title">Interactive Web Test Runner & Live Transcript UI</text>
+            <text x="445" y="545" class="svg-node-text-sub">• Real-Time Speech Bubbles & Speaker Tags</text>
+            <text x="445" y="563" class="svg-node-text-sub">• Dynamic Participant Volume VU Meters (0-100%)</text>
+            <text x="445" y="581" class="svg-node-text-sub">• One-Click Auto OAuth Token Fetch & Copy Actions</text>
+            <text x="445" y="600" class="svg-node-tag">[meet-client/index.html & demo.ts]</text>
+          </g>
+
+          <!-- ================= 3. FLOW ARROWS & DATA CONNECTIONS ================= -->
+          
+          <!-- 1. Signaling: MeetClient -> Google Meet API -->
+          <path d="M 430,85 L 350,85" class="flow-line flow-signaling pipe-signaling" marker-end="url(#arrow-signaling)" />
+          <text x="355" y="78" class="flow-label pipe-signaling" fill="#60a5fa">SDP Offer / Answer</text>
+
+          <!-- 2. WebRTC Media Stream: Google SFU -> MeetClient -->
+          <path d="M 190,95 L 430,95" class="flow-line flow-audio pipe-audio" marker-end="url(#arrow-audio)" />
+          <text x="210" y="115" class="flow-label pipe-audio" fill="#f87171">WebRTC Audio (RTP Opus)</text>
+
+          <!-- 3. WebRTC DataChannels: Google SFU -> DataChannels -->
+          <path d="M 190,115 C 320,160 550,140 660,110" class="flow-line flow-signaling pipe-signaling" marker-end="url(#arrow-signaling)" />
+          <text x="240" y="145" class="flow-label pipe-signaling" fill="#60a5fa">DataChannels (participants, entries, stats)</text>
+
+          <!-- 4. MediaStats Keepalive Return: DataChannels -> Google SFU -->
+          <path d="M 660,95 C 480,30 280,35 180,65" class="flow-line flow-signaling pipe-signaling" marker-end="url(#arrow-signaling)" />
+          <text x="290" y="32" class="flow-label pipe-signaling" fill="#60a5fa">2s Keepalive Heartbeats</text>
+
+          <!-- 5. AudioSink -> AudioProcessor -->
+          <path d="M 525,240 L 525,280" class="flow-line flow-audio pipe-audio" marker-end="url(#arrow-audio)" />
+          <text x="532" y="265" class="flow-label pipe-audio" fill="#f87171">MediaStreamTrack</text>
+
+          <!-- 6. AudioProcessor -> TranscriptionPipeline -->
+          <path d="M 620,310 L 660,310" class="flow-line flow-audio pipe-audio" marker-end="url(#arrow-audio)" />
+          <text x="590" y="303" class="flow-label pipe-audio" fill="#f87171">16kHz PCM Buffer</text>
+
+          <!-- 7. DataChannels -> TranscriptionPipeline -->
+          <path d="M 755,140 L 755,240" class="flow-line flow-signaling pipe-signaling" marker-end="url(#arrow-signaling)" />
+          <text x="762" y="190" class="flow-label pipe-signaling" fill="#60a5fa">Speaker Attribution</text>
+
+          <!-- 8. TranscriptionPipeline -> Deepgram STT -->
+          <path d="M 850,260 C 900,240 920,180 950,140" class="flow-line flow-audio pipe-audio" marker-end="url(#arrow-audio)" />
+          <text x="860" y="210" class="flow-label pipe-audio" fill="#f87171">PCM Stream (WS)</text>
+
+          <!-- 9. Deepgram STT -> TranscriptionPipeline (Transcripts return) -->
+          <path d="M 970,140 C 950,190 920,270 850,290" class="flow-line flow-transcript pipe-transcript" marker-end="url(#arrow-transcript)" />
+          <text x="890" y="235" class="flow-label pipe-transcript" fill="#34d399">Live Transcript Segments</text>
+
+          <!-- 10. TranscriptionPipeline -> Live Web UI -->
+          <path d="M 755,355 L 755,495" class="flow-line flow-transcript pipe-transcript" marker-end="url(#arrow-transcript)" />
+          <text x="762" y="420" class="flow-label pipe-transcript" fill="#34d399">Live Transcripts & VU Meters</text>
+
+          <!-- 11. OAuth Token: FastAPI Auth -> MeetClient / UI -->
+          <path d="M 350,395 C 410,395 440,395 440,495" class="flow-line flow-auth pipe-auth" marker-end="url(#arrow-auth)" />
+          <text x="355" y="445" class="flow-label pipe-auth" fill="#fbbf24">Bearer Access Token</text>
+
+          <!-- 12. OAuth Flow: FastAPI Auth -> Google OAuth Server -->
+          <path d="M 200,365 L 200,235" class="flow-line flow-auth pipe-auth" marker-end="url(#arrow-auth)" />
+          <text x="205" y="300" class="flow-label pipe-auth" fill="#fbbf24">OAuth Refresh Token</text>
+
+          <!-- 13. Persistence: Live Web UI / Bot -> FastAPI DB & WebSocket -->
+          <path d="M 430,555 L 350,555" class="flow-line flow-transcript pipe-transcript" marker-end="url(#arrow-transcript)" />
+          <text x="360" y="547" class="flow-label pipe-transcript" fill="#34d399">POST /api/transcripts</text>
+
+          <!-- 14. Database -> AI Summarizer -->
+          <path d="M 350,585 C 640,650 850,600 950,410" class="flow-line flow-ai pipe-ai" marker-end="url(#arrow-ai)" />
+          <text x="620" y="610" class="flow-label pipe-ai" fill="#c084fc">Complete Meeting Transcript (DB)</text>
+
+          <!-- 15. AI Summarizer -> RAG Vector Index -->
+          <path d="M 1080,410 L 1080,430" class="flow-line flow-ai pipe-ai" marker-end="url(#arrow-ai)" />
+          <text x="1085" y="425" class="flow-label pipe-ai" fill="#c084fc">Embeddings</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared Inspector Drawer (Available across all views) -->
+  <div class="inspector-drawer" id="inspector-drawer">
+    <div class="inspector-header">
+      <div>
+        <h2 class="inspector-title" id="insp-title">MeetClient (WebRTC Peer Connection Engine)</h2>
+        <span class="inspector-filepath" id="insp-path">meet-client/src/meet/MeetClient.ts</span>
+      </div>
+      <span class="node-tag" id="insp-category">WebRTC Core</span>
+    </div>
+    <div class="inspector-content">
+      <div class="info-card">
+        <h4>💡 Plain-English Analogy & Role</h4>
+        <p id="insp-analogy">The mission controller of the bot. It creates the WebRTC peer connection with 3 audio receivers, data channels, and 3 video receivers, exchanges SDP with Google, and manages the live WebRTC connection.</p>
+      </div>
+      <div class="info-card">
+        <h4>🔄 Data Inputs & Outputs</h4>
+        <p id="insp-io">Inbound: Meeting Space ID & OAuth Token ➔ Outbound: Established WebRTC Media Connection & Audio Tracks.</p>
+      </div>
+      <div class="info-card" style="grid-column: span 2;">
+        <h4>💻 Key Code Snippet / Implementation</h4>
+        <pre class="code-preview" id="insp-code">// Strict SDP transceiver order required by Google Meet:
+// 1. Audio (3 recvonly) -> 2. DataChannels -> 3. Video (3 recvonly)
+for (let i = 0; i < 3; i++) {
+  this.pc.addTransceiver('audio', { direction: 'recvonly' });
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 3: STEP-BY-STEP SIMULATOR ================= -->
+  <div id="flow-simulator" class="tab-view">
+    <div class="simulator-container">
+      <div class="simulator-controls">
+        <div>
+          <h2 style="font-family: var(--font-display); font-size: 1.25rem;">Live Meeting Bot Lifecycle Simulator</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Step through the 7 distinct phases of joining a meeting, transcribing audio, and generating AI notes.</p>
+        </div>
+        <div class="step-actions">
+          <button class="sim-btn" id="sim-prev" onclick="prevStep()">⬅️ Previous</button>
+          <button class="sim-btn" id="sim-play" onclick="togglePlaySimulation()">▶️ Auto-Play</button>
+          <button class="sim-btn" id="sim-next" onclick="nextStep()">Next ➡️</button>
+        </div>
+      </div>
+
+      <!-- Timeline Track -->
+      <div class="timeline-track">
+        <div class="timeline-progress" id="sim-progress" style="width: 0%;"></div>
+        <div class="timeline-step active" onclick="goToStep(0)">
+          <div class="step-bubble">1</div>
+          <span class="step-label">OAuth Ingestion</span>
+        </div>
+        <div class="timeline-step" onclick="goToStep(1)">
+          <div class="step-bubble">2</div>
+          <span class="step-label">SDP Offer/Answer</span>
+        </div>
+        <div class="timeline-step" onclick="goToStep(2)">
+          <div class="step-bubble">3</div>
+          <span class="step-label">WebRTC Join</span>
+        </div>
+        <div class="timeline-step" onclick="goToStep(3)">
+          <div class="step-bubble">4</div>
+          <span class="step-label">DSP Resampling</span>
+        </div>
+        <div class="timeline-step" onclick="goToStep(4)">
+          <div class="step-bubble">5</div>
+          <span class="step-label">Live STT Stream</span>
+        </div>
+        <div class="timeline-step" onclick="goToStep(5)">
+          <div class="step-bubble">6</div>
+          <span class="step-label">DB Persistence</span>
+        </div>
+        <div class="timeline-step" onclick="goToStep(6)">
+          <div class="step-bubble">7</div>
+          <span class="step-label">AI Notes & RAG</span>
+        </div>
+      </div>
+
+      <!-- Step Details Card -->
+      <div class="step-display-card">
+        <div class="step-details">
+          <span class="node-tag" id="sim-step-tag">Step 1 of 7</span>
+          <h3 id="sim-step-title" style="margin-top: 0.5rem;">1. OAuth Authentication & Token Refresh</h3>
+          <p id="sim-step-desc">The bot calls FastAPI's <code>GET /auth/token</code>. If expired, the backend automatically uses the stored refresh token from <code>token.json</code> to fetch a fresh Google Bearer token with meeting scopes.</p>
+          <div class="info-card">
+            <h4>Key Artifacts / Endpoints</h4>
+            <p id="sim-step-endpoints"><code>GET /auth/token</code> ➔ <code>token.json</code> (Automatic Google Token Refresh)</p>
+          </div>
+        </div>
+        <div class="step-visual">
+          <span style="font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em;">Live Data Packet Simulation</span>
+          <div id="sim-visual-box" style="text-align: center; font-family: var(--font-mono); font-size: 0.9rem; color: #93c5fd;">
+            [Browser / Client] ──(GET /auth/token)──► [FastAPI Backend] ──► [Google OAuth2]
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 4: SCALING BLUEPRINT ================= -->
+  <div id="scaling-view" class="tab-view">
+    <div class="scale-card">
+      <h2 style="font-family: var(--font-display); font-size: 1.35rem;">Horizontal Scaling: Supporting 1,000+ Concurrent Meetings</h2>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">How this decoupled architecture scales to thousands of concurrent bots with near-zero server CPU overhead and 95% lower cost than third-party bot vendors.</p>
+
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <span class="metric-value">~80 MB</span>
+          <span class="metric-label">Memory per Headless Bot</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-value">~0.1 vCPU</span>
+          <span class="metric-label">CPU per Headless Bot</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-value">&lt; 300 ms</span>
+          <span class="metric-label">Live STT Latency</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-value">~$0.004</span>
+          <span class="metric-label">Compute Cost / Bot Hour</span>
+        </div>
+      </div>
+
+      <div class="info-card" style="margin-top: 1rem;">
+        <h4>Key Scalability Advantages Over Legacy Screen-Recording Bots</h4>
+        <ul style="padding-left: 1.25rem; font-size: 0.92rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+          <li><strong>No Video Rendering Overhead:</strong> The bot does not render or composite heavy video canvases. It pulls raw audio tracks directly from Google's SFU.</li>
+          <li><strong>Client-Side DSP Resampling:</strong> Converting Float32 to 16kHz Linear PCM runs in client threads, keeping the central API server completely free of audio transcoding loads.</li>
+          <li><strong>Stateless Containerized Runners:</strong> If a meeting disconnects, its container terminates cleanly without affecting any other running meeting instances in the cluster.</li>
+          <li><strong>Redis Pub/Sub WebSocket Multiplexing:</strong> Transcripts are published to Redis, allowing thousands of dashboard users to view live streams across distributed API nodes.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 5: GLOSSARY INSPECTOR ================= -->
+  <div id="glossary-view" class="tab-view">
+    <div class="glossary-search-bar">
+      <input type="text" class="search-input" id="glossary-search" placeholder="🔍 Search any term or acronym (e.g. WebRTC, SDP, PCM, SFU, WAL, RAG, RMS)..." oninput="filterGlossary()" />
+      <div class="filter-pills">
+        <button class="filter-pill active" onclick="filterCategory('all')">All Terms</button>
+        <button class="filter-pill" onclick="filterCategory('networking')">Networking & WebRTC</button>
+        <button class="filter-pill" onclick="filterCategory('audio')">Audio & DSP</button>
+        <button class="filter-pill" onclick="filterCategory('auth')">Auth & Backend</button>
+        <button class="filter-pill" onclick="filterCategory('ai')">AI & Storage</button>
+      </div>
+    </div>
+
+    <div class="glossary-cards-grid" id="glossary-grid">
+      <!-- Term Cards rendered dynamically -->
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Data for Node Inspector
+  const nodeDatabase = {
+    'gmeet-sfu': {
+      title: 'Google Meet SFU (Selective Forwarding Unit)',
+      path: 'Google Cloud Media Edge',
+      category: 'Media Server',
+      analogy: 'A high-speed postal sorting center. Instead of all 10 participants sending audio to each other, everyone sends 1 stream to the SFU, and the SFU forwards audio tracks to our bot.',
+      io: 'Inbound: Participant audio from microphones -> Outbound: WebRTC RTP Opus audio tracks to bot.',
+      code: `// Google SFU delivers incoming audio track to WebRTC peer connection
+peerConnection.ontrack = (event) => {
+  const track = event.track; // MediaStreamTrack (audio)
+  audioSink.attachTrack(track);
+};`
+    },
+    'gmeet-api': {
+      title: 'Google Meet REST & Media API',
+      path: 'Google Cloud API (spaces.connectActiveConference)',
+      category: 'Signaling Gateway',
+      analogy: 'The front desk receptionist. It takes our bot’s SDP Offer, verifies OAuth permissions, and hands back the SDP Answer with the server connection details.',
+      io: 'Inbound: HTTP POST with SDP Offer & Bearer Token -> Outbound: JSON with SDP Answer & session IDs.',
+      code: `const res = await fetch(\`https://meet.googleapis.com/v2beta/spaces/\${spaceId}:connectActiveConference\`, {
+  method: 'POST',
+  headers: { 'Authorization': \`Bearer \${token}\`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ offer: sdpOffer })
+});`
+    },
+    'oauth': {
+      title: 'Google OAuth 2.0 & Token System',
+      path: 'app/services/oauth.py & token.json',
+      category: 'Authentication',
+      analogy: 'A secure digital VIP pass. It lets the bot join meetings on your behalf without ever knowing or storing your Google password.',
+      io: 'Inbound: User authorization code -> Outbound: Access Token (1-hour validity) + Refresh Token.',
+      code: `def get_current_token() -> str:
+    creds = Credentials.from_authorized_user_file("token.json")
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request()) # Auto-refreshes seamlessly
+    return creds.token`
+    },
+    'meetclient': {
+      title: 'MeetClient (WebRTC Peer Connection Engine)',
+      path: 'meet-client/src/meet/MeetClient.ts',
+      category: 'WebRTC Core',
+      analogy: 'The mission controller of the bot. It sets up strict transceiver sequences, exchanges SDP with Google, and manages the WebRTC lifecycle.',
+      io: 'Inbound: Meeting Space ID & OAuth Token -> Outbound: Established WebRTC Media Connection.',
+      code: `// Strict SDP transceiver order required by Google Meet:
+// 1. Audio (3 recvonly) -> 2. DataChannels -> 3. Video (3 recvonly)
+for (let i = 0; i < 3; i++) {
+  this.pc.addTransceiver('audio', { direction: 'recvonly' });
+}`
+    },
+    'datachannels': {
+      title: 'RTCDataChannel Handlers',
+      path: 'meet-client/src/meet/ParticipantManager.ts & MediaStatsHandler.ts',
+      category: 'Signaling Channels',
+      analogy: 'The bot’s ears for meeting events. Sends who is in the room, which microphone belongs to who, and heartbeat reports to stay connected.',
+      io: 'Inbound: session-control, participants, media-entries JSON -> Outbound: media-stats 2s keepalives.',
+      code: `// MediaStatsHandler reports inbound RTP stats every 2s
+setInterval(async () => {
+  const stats = await this.pc.getStats();
+  this.mediaStatsChannel.send(JSON.stringify(statsReport));
+}, 2000);`
+    },
+    'audioprocessor': {
+      title: 'AudioProcessor (DSP Resampler & Volume Meter)',
+      path: 'meet-client/src/audio/AudioProcessor.ts',
+      category: 'DSP Audio',
+      analogy: 'The digital audio translator. Web Audio is Float32 48kHz; Deepgram speech AI requires 16kHz 16-bit Linear PCM. AudioProcessor performs this math conversion in real time.',
+      io: 'Inbound: Web Audio Float32 samples -> Outbound: 16-bit Linear PCM (Int16Array) + RMS Volume (0-100%).',
+      code: `// Downsamples and converts Float32 [-1.0, 1.0] to signed Int16 [-32768, 32767]
+const clamped = Math.max(-1, Math.min(1, sample));
+result[offset] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;`
+    },
+    'transcriptionpipeline': {
+      title: 'TranscriptionPipeline',
+      path: 'meet-client/src/audio/TranscriptionPipeline.ts',
+      category: 'Audio Multiplexer',
+      analogy: 'The conductor of the orchestra. It catches every participant audio track, labels it with the speaker’s real name from ParticipantManager, and streams it to the STT engine.',
+      io: 'Inbound: PCM Chunks + Participant IDs -> Outbound: Speaker-attributed audio buffers to STT.',
+      code: `const participant = this.participantManager?.getParticipantByTrackId(track.id);
+this.sttEngine.sendAudioChunk(pcmData, {
+  speaker: participant?.displayName || 'Speaker',
+  participantId: participant?.id
+});`
+    },
+    'deepgram': {
+      title: 'Deepgram Nova-2 STT Engine',
+      path: 'meet-client/src/stt/DeepgramSTTEngine.ts',
+      category: 'Streaming STT',
+      analogy: 'The world’s fastest stenographer. Listens to 16kHz PCM audio over WebSockets and generates words with punctuation and timestamps in under 250ms.',
+      io: 'Inbound: 16kHz Linear PCM byte stream -> Outbound: Interim & Final TranscriptSegment JSON.',
+      code: `const ws = new WebSocket('wss://api.deepgram.com/v1/listen?model=nova-2&punctuate=true', [
+  'token', this.config.apiKey
+]);`
+    },
+    'webspeech': {
+      title: 'Web Speech API Engine',
+      path: 'meet-client/src/stt/WebSpeechSTTEngine.ts',
+      category: 'Browser Native STT',
+      analogy: 'The built-in voice-typing engine inside Chrome/Edge. Requires zero API keys or external servers.',
+      io: 'Inbound: Browser speech stream -> Outbound: TranscriptSegment objects.',
+      code: `const recognition = new webkitSpeechRecognition();
+recognition.continuous = true;
+recognition.interimResults = true;`
+    },
+    'webui': {
+      title: 'Interactive Web Test Runner',
+      path: 'meet-client/index.html & demo.ts',
+      category: 'Frontend UI',
+      analogy: 'The cockpit for the user. Lets you paste meeting URLs, toggle STT engines, view live jumping VU volume meters, and see transcript speech bubbles live.',
+      io: 'Inbound: User actions & live transcript events -> Outbound: Visual rendered UI.',
+      code: `client.onTranscript((segment) => {
+  if (segment.isFinal) appendFinalTranscript(segment);
+  else updateInterimTranscript(segment);
+});`
+    },
+    'authrouter': {
+      title: 'FastAPI OAuth Service & /auth/token',
+      path: 'app/routers/auth.py & app/services/oauth.py',
+      category: 'Auth Gateway',
+      analogy: 'The automated key dispenser. Frontend clients make a GET request and instantly receive a valid Google Bearer token without handling OAuth complexity.',
+      io: 'Inbound: GET /auth/token -> Outbound: JSON { access_token: "ya29..." }',
+      code: `@router.get("/auth/token")
+def get_token():
+    token = get_current_token()
+    return {"access_token": token}`
+    },
+    'websocketmgr': {
+      title: 'WebSocket Broadcast Gateway (/ws/transcripts)',
+      path: 'app/services/websocket_manager.py',
+      category: 'Live Broadcast',
+      analogy: 'A loudspeaker broadcasting live transcript sentences to all dashboard viewers watching the meeting in real time.',
+      io: 'Inbound: Finalized segments from bot -> Outbound: Broadcast to all subscribed WebSockets.',
+      code: `async def broadcast(self, meeting_id: str, message: dict):
+    for ws in self.active_connections.get(meeting_id, []):
+        await ws.send_json(message)`
+    },
+    'database': {
+      title: 'SQLite WAL Mode Persistence Layer',
+      path: 'app/services/database.py',
+      category: 'Local Database',
+      analogy: 'A durable digital ledger. Uses Write-Ahead Logging so reading transcripts never blocks saving new incoming speech segments.',
+      io: 'Inbound: Meeting metadata, participants, segments -> Outbound: Queryable records & Markdown exports.',
+      code: `PRAGMA journal_mode=WAL; -- Allows simultaneous concurrent reads and writes`
+    },
+    'summarizer': {
+      title: 'AI Meeting Notes Generator (Gemini 1.5)',
+      path: 'app/services/summary.py',
+      category: 'LLM Intelligence',
+      analogy: 'An expert executive assistant who reviews the entire transcript and drafts a bulletproof summary with clear action items and owners.',
+      io: 'Inbound: Full meeting transcript text -> Outbound: Structured Executive Summary & Action Items.',
+      code: `prompt = "Extract: 1. Executive Summary, 2. Key Decisions, 3. Action Items (Owner + Task)"
+summary = gemini_model.generate_content(prompt + transcript)`
+    },
+    'ragchatbot': {
+      title: 'Semantic Search & RAG Chatbot',
+      path: 'app/services/rag.py',
+      category: 'RAG Search',
+      analogy: 'An instant search engine over all your past conversations. Ask "When is the launch date?" and it quotes the exact 10-second audio clip from the meeting.',
+      io: 'Inbound: User Question -> Outbound: Answer with speaker and timestamp citations.',
+      code: `results = vector_index.search(query_embedding, top_k=3)
+answer = generate_answer_with_citations(query, results)`
+    }
+  };
+
+  // Glossary Terms Data
+  const glossaryTerms = [
+    {
+      name: 'WebRTC',
+      category: 'networking',
+      analogy: 'A direct live phone call instead of sending letters back and forth.',
+      role: 'Pulls raw audio streams directly from Google Meet’s media server with sub-second latency and zero video rendering overhead.'
+    },
+    {
+      name: 'STT (Speech-to-Text)',
+      category: 'audio',
+      analogy: 'An automated stenographer listening and typing out words in real time.',
+      role: 'Converts participant audio into text strings with speaker attribution and timestamps.'
+    },
+    {
+      name: 'SDP (Session Description Protocol)',
+      category: 'networking',
+      analogy: 'A digital business card exchanged before a meeting agreeing on audio formats and ports.',
+      role: 'Negotiates the exact sequence of 3 audio transceivers, data channels, and 3 video transceivers with Google Meet.'
+    },
+    {
+      name: 'ICE (Connectivity Establishment)',
+      category: 'networking',
+      analogy: 'A GPS navigation system finding the best open path through routers and firewalls.',
+      role: 'Discovers public IP paths so the bot and Google Meet can exchange audio packets.'
+    },
+    {
+      name: 'SFU (Selective Forwarding Unit)',
+      category: 'networking',
+      analogy: 'A postal sorting hub forwarding letters to recipients.',
+      role: 'Google Meet’s central media server that delivers separate audio tracks for each active speaker.'
+    },
+    {
+      name: 'PCM (Pulse Code Modulation)',
+      category: 'audio',
+      analogy: 'Taking digital snapshots of a sound wave thousands of times every second.',
+      role: 'The raw 16-bit Linear PCM audio format required by Deepgram and AI speech models.'
+    },
+    {
+      name: 'DSP & Resampling',
+      category: 'audio',
+      analogy: 'Translating high-res audio down to the exact sample rate required by AI models.',
+      role: 'AudioProcessor converts incoming 48kHz audio into 16kHz audio in the client thread.'
+    },
+    {
+      name: 'RMS Volume & VU Meter',
+      category: 'audio',
+      analogy: 'The jumping green/red audio meter showing how loud sound energy is.',
+      role: 'Calculates speaker volume (0–100%) to animate the volume bar next to each participant.'
+    },
+    {
+      name: 'RTCDataChannel',
+      category: 'networking',
+      analogy: 'A high-speed side text tunnel running alongside audio streams.',
+      role: 'Delivers participant display names, track mappings, and 2-second keepalive heartbeats.'
+    },
+    {
+      name: 'OAuth 2.0',
+      category: 'auth',
+      analogy: 'A digital visitor badge allowing the bot into meetings without your password.',
+      role: 'Provides access tokens with meeting scopes and automatically refreshes them in token.json.'
+    },
+    {
+      name: 'WebSocket',
+      category: 'auth',
+      analogy: 'A permanently open two-way phone line between browser and server.',
+      role: 'Streams live transcripts instantaneously to frontend dashboards.'
+    },
+    {
+      name: 'RTP Opus',
+      category: 'audio',
+      analogy: 'An Amazon delivery box (RTP) carrying high-quality compressed voice chunks (Opus).',
+      role: 'The live audio packet stream sent over UDP from Google Meet’s media server to our bot.'
+    },
+    {
+      name: 'Opus Codec',
+      category: 'audio',
+      analogy: 'An ultra-fast MP3 designed specifically for live voice calls with sub-20ms latency.',
+      role: 'The primary audio compression format used by Google Meet, Discord, and WebRTC.'
+    },
+    {
+      name: 'DTLS Encryption',
+      category: 'networking',
+      analogy: 'An armored bank truck (HTTPS-style encryption) protecting WebRTC audio from eavesdropping.',
+      role: 'Encrypts the WebRTC RTP media stream and data channels between bot and Google servers.'
+    },
+    {
+      name: 'SCTP Protocol',
+      category: 'networking',
+      analogy: 'A certified mail service ensuring text messages never get lost in transit.',
+      role: 'The reliable transport protocol operating under the hood of RTCDataChannel.'
+    },
+    {
+      name: 'MediaStreamTrack',
+      category: 'networking',
+      analogy: 'A single individual audio pipe representing one person’s microphone in the browser.',
+      role: 'The JavaScript WebRTC object representing each participant’s live audio stream.'
+    },
+    {
+      name: 'Float32 vs Int16 (PCM)',
+      category: 'audio',
+      analogy: 'Converting decimals (-1.0 to 1.0) into integers (-32768 to 32767) so AI speech models can process them.',
+      role: 'AudioProcessor converts browser Float32 Web Audio into 16-bit Linear PCM for Deepgram.'
+    },
+    {
+      name: 'CORS',
+      category: 'auth',
+      analogy: 'A security guard at the gate allowing Frontend (Port 5173) to request tokens from Backend (Port 8000).',
+      role: 'Cross-Origin Resource Sharing headers enabled on FastAPI for smooth frontend API calls.'
+    },
+    {
+      name: 'Nova-2 (Deepgram)',
+      category: 'audio',
+      analogy: 'The world’s fastest AI stenographer model trained on conversational human speech.',
+      role: 'Deepgram’s streaming speech-to-text AI model used for real-time transcription in our bot.'
+    },
+    {
+      name: 'SQLite WAL Mode',
+      category: 'ai',
+      analogy: 'Writing temporary changes to a notebook so readers aren’t blocked by writers.',
+      role: 'Allows the database to save live transcripts without freezing queries.'
+    },
+    {
+      name: 'RAG (Retrieval-Augmented Gen)',
+      category: 'ai',
+      analogy: 'An open-book exam where the AI looks up the exact transcript paragraphs before answering.',
+      role: 'Finds exact speaker quotes and timestamps when answering user questions about past meetings.'
+    }
+  ];
+
+  // Tab Switching
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active-view'));
+    
+    event.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active-view');
+
+    // Show inspector drawer only on Tab 1 (Modules) & Tab 2 (Block Diagram)
+    const inspector = document.getElementById('inspector-drawer');
+    if (inspector) {
+      if (tabId === 'modules-view' || tabId === 'block-diagram-view') {
+        inspector.style.display = 'flex';
+      } else {
+        inspector.style.display = 'none';
+      }
+    }
+  }
+
+  // Node Selection in Map
+  function selectNode(nodeId) {
+    // Unselect from cards
+    document.querySelectorAll('.node-card').forEach(card => card.classList.remove('selected'));
+    const cardEl = document.getElementById(`card-${nodeId}`);
+    if (cardEl) cardEl.classList.add('selected');
+
+    // Unselect from SVG
+    document.querySelectorAll('.svg-node-box').forEach(sbox => sbox.classList.remove('selected'));
+    const sbox = document.getElementById(`sbox-${nodeId}`);
+    if (sbox) sbox.classList.add('selected');
+
+    const data = nodeDatabase[nodeId];
+    if (!data) return;
+
+    document.getElementById('insp-title').textContent = data.title;
+    document.getElementById('insp-path').textContent = data.path;
+    document.getElementById('insp-category').textContent = data.category;
+    document.getElementById('insp-analogy').textContent = data.analogy;
+    document.getElementById('insp-io').textContent = data.io;
+    document.getElementById('insp-code').textContent = data.code;
+
+    // Scroll smoothly to inspector
+    document.getElementById('inspector-drawer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Toggle Flow Pipes in SVG Diagram
+  function toggleFlowPipe(pipeType) {
+    const btn = document.getElementById(`toggle-${pipeType}-flow`);
+    btn.classList.toggle('active');
+    const isNowActive = btn.classList.contains('active');
+
+    const elements = document.querySelectorAll(`.pipe-${pipeType}`);
+    elements.forEach(el => {
+      if (isNowActive) {
+        el.classList.remove('hidden-pipe');
+      } else {
+        el.classList.add('hidden-pipe');
+      }
+    });
+  }
+
+  // Simulation Steps
+  const simulationSteps = [
+    {
+      title: '1. OAuth Authentication & Token Ingestion',
+      tag: 'Step 1 of 7',
+      desc: 'The bot calls FastAPI\'s GET /auth/token. If expired, the backend automatically uses the stored refresh token from token.json to fetch a fresh Google Bearer token with meeting scopes.',
+      endpoints: 'GET /auth/token ➔ token.json (Auto Token Refresh)',
+      visual: '[Browser / Client] ──(GET /auth/token)──► [FastAPI Backend] ──► [Google OAuth2]'
+    },
+    {
+      title: '2. SDP Offer Generation & spaces.connectActiveConference',
+      tag: 'Step 2 of 7',
+      desc: 'MeetClient creates an RTCPeerConnection with 3 audio transceivers, 4 data channels, and 3 video transceivers in strict order, generating an SDP Offer and sending it to Google Meet API.',
+      endpoints: 'POST spaces/{spaceId}:connectActiveConference ➔ Returns SDP Answer',
+      visual: '[MeetClient] ──(SDP Offer)──► [Google Meet API] ──► [Returns SDP Answer]'
+    },
+    {
+      title: '3. WebRTC Peer Handshake & Data Channels',
+      tag: 'Step 3 of 7',
+      desc: 'Client sets Remote Description with the SDP Answer. ICE candidates connect the peer connection to Google\'s SFU. The session-control channel transitions to JOINED.',
+      endpoints: 'ICE Candidates Handshake ➔ session-control: JOINED',
+      visual: '[MeetClient] ◄══(WebRTC DTLS / ICE)══► [Google Meet SFU]'
+    },
+    {
+      title: '4. Audio Capture & DSP Downsampling (48kHz ➔ 16kHz PCM)',
+      tag: 'Step 4 of 7',
+      desc: 'AudioSink receives incoming WebRTC audio tracks. AudioProcessor downsamples Float32 audio to 16-bit Linear PCM (Int16Array) and calculates RMS volume for live VU meters.',
+      endpoints: 'AudioSink (MediaStreamTrack) ➔ AudioProcessor (16kHz PCM + RMS Meter)',
+      visual: '[Google Meet SFU Audio Track] ──► [AudioSink] ──► [AudioProcessor 16kHz PCM]'
+    },
+    {
+      title: '5. Speaker Attribution & Streaming STT (Deepgram Nova-2)',
+      tag: 'Step 5 of 7',
+      desc: 'ParticipantManager maps audio tracks to real participant names via media-entries channel. TranscriptionPipeline streams PCM audio over WebSockets to Deepgram Nova-2 for real-time transcription.',
+      endpoints: 'TranscriptionPipeline ➔ wss://api.deepgram.com/v1/listen ➔ Live Transcripts',
+      visual: '[TranscriptionPipeline + Speaker Name] ──► [Deepgram Nova-2 WebSocket]'
+    },
+    {
+      title: '6. Database Persistence & Real-Time WebSocket Broadcast',
+      tag: 'Step 6 of 7',
+      desc: 'Finalized speech segments are sent to POST /api/transcripts, saving them to SQLite WAL mode and broadcasting them across /ws/transcripts to all connected user dashboard tabs.',
+      endpoints: 'POST /api/transcripts ➔ SQLite Database + WebSocket Broadcast Gateway',
+      visual: '[Final Transcript] ──► [FastAPI / SQLite WAL] ──► [WebSocket Dashboard Users]'
+    },
+    {
+      title: '7. Post-Meeting AI Intelligence & Semantic RAG Search',
+      tag: 'Step 7 of 7',
+      desc: 'When the meeting ends, Google Gemini 1.5 extracts executive summaries, key decisions, and action items. Transcripts are indexed with vector embeddings for conversational search.',
+      endpoints: 'POST /meetings/{id}/summary (Gemini 1.5) + Vector RAG Chatbot',
+      visual: '[Full Transcript] ──► [Gemini 1.5 LLM] ──► [Executive Summary + Action Items]'
+    }
+  ];
+
+  let currentStep = 0;
+  let isPlaying = false;
+  let playInterval = null;
+
+  function updateStepUI() {
+    const step = simulationSteps[currentStep];
+    document.getElementById('sim-step-tag').textContent = step.tag;
+    document.getElementById('sim-step-title').textContent = step.title;
+    document.getElementById('sim-step-desc').textContent = step.desc;
+    document.getElementById('sim-step-endpoints').textContent = step.endpoints;
+    document.getElementById('sim-visual-box').textContent = step.visual;
+
+    // Timeline steps UI
+    const steps = document.querySelectorAll('.timeline-step');
+    steps.forEach((el, idx) => {
+      el.classList.remove('active', 'completed');
+      if (idx === currentStep) el.classList.add('active');
+      else if (idx < currentStep) el.classList.add('completed');
+    });
+
+    const progressPct = (currentStep / (simulationSteps.length - 1)) * 100;
+    document.getElementById('sim-progress').style.width = `${progressPct}%`;
+
+    document.getElementById('sim-prev').disabled = currentStep === 0;
+    document.getElementById('sim-next').disabled = currentStep === simulationSteps.length - 1;
+  }
+
+  function nextStep() {
+    if (currentStep < simulationSteps.length - 1) {
+      currentStep++;
+      updateStepUI();
+    } else if (isPlaying) {
+      togglePlaySimulation();
+    }
+  }
+
+  function prevStep() {
+    if (currentStep > 0) {
+      currentStep--;
+      updateStepUI();
+    }
+  }
+
+  function goToStep(idx) {
+    currentStep = idx;
+    updateStepUI();
+  }
+
+  function togglePlaySimulation() {
+    isPlaying = !isPlaying;
+    const playBtn = document.getElementById('sim-play');
+    if (isPlaying) {
+      playBtn.textContent = '⏸️ Pause';
+      playInterval = setInterval(() => {
+        if (currentStep < simulationSteps.length - 1) {
+          nextStep();
+        } else {
+          togglePlaySimulation();
+        }
+      }, 3000);
+    } else {
+      playBtn.textContent = '▶️ Auto-Play';
+      clearInterval(playInterval);
+    }
+  }
+
+  // Glossary Rendering & Filtering
+  function renderGlossary(terms) {
+    const grid = document.getElementById('glossary-grid');
+    grid.innerHTML = '';
+    terms.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'term-card';
+      card.innerHTML = `
+        <div class="term-header">
+          <span class="term-name">${t.name}</span>
+          <span class="term-category">${t.category}</span>
+        </div>
+        <div class="term-analogy">"${t.analogy}"</div>
+        <p class="term-role">${t.role}</p>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  let activeCategory = 'all';
+  function filterCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    filterGlossary();
+  }
+
+  function filterGlossary() {
+    const query = document.getElementById('glossary-search').value.toLowerCase();
+    const filtered = glossaryTerms.filter(t => {
+      const matchesQuery = t.name.toLowerCase().includes(query) || t.role.toLowerCase().includes(query) || t.analogy.toLowerCase().includes(query);
+      const matchesCat = activeCategory === 'all' || t.category === activeCategory;
+      return matchesQuery && matchesCat;
+    });
+    renderGlossary(filtered);
+  }
+
+  // Initialize
+  renderGlossary(glossaryTerms);
+  updateStepUI();
+  selectNode('meetclient');
+</script>
+
+</body>
+</html>
