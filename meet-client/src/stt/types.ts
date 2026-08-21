@@ -1,4 +1,4 @@
-export type STTProvider = 'deepgram' | 'webspeech';
+export type STTProvider = 'deepgram' | 'webspeech' | 'batch';
 
 export type STTEngineState = 'DISCONNECTED' | 'CONNECTING' | 'LISTENING' | 'ERROR';
 

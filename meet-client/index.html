@@ -149,10 +149,11 @@
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label for="stt-provider">Transcription Provider</label>
+          <label for="stt-provider">Transcription Mode & Provider</label>
           <select id="stt-provider">
-            <option value="deepgram">Deepgram Live Streaming (Nova-2 16kHz PCM)</option>
-            <option value="webspeech">Web Speech API (Browser Native - Zero Config)</option>
+            <option value="deepgram">🟢 Deepgram Live Streaming (Nova-2 WebSocket)</option>
+            <option value="webspeech">🟢 Web Speech API (Browser Native - Zero Config)</option>
+            <option value="batch">📦 Post-Meeting Batch Mode (Record WAV & AI Transcribe on Leave)</option>
           </select>
         </div>
         <div class="form-group" id="deepgram-key-group">

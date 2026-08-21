@@ -84,7 +84,14 @@ export class TranscriptionPipeline {
   }
 
   /**
-   * Stops the transcription pipeline and cleans up all processors and STT connections.
+   * Returns the underlying STT engine instance.
+   */
+  public getSTTEngine(): ISTTEngine {
+    return this.sttEngine;
+  }
+
+  /**
+   * Stops the transcription pipeline and detaches all audio processors.
    */
   public async stop(): Promise<void> {
     this.isRunning = false;
@@ -128,10 +135,6 @@ export class TranscriptionPipeline {
   public onAudioLevel(listener: (event: AudioLevelEvent) => void): () => void {
     this.audioLevelListeners.add(listener);
     return () => this.audioLevelListeners.delete(listener);
-  }
-
-  public getSTTEngine(): ISTTEngine {
-    return this.sttEngine;
   }
 
   private attachTrackProcessor(track: MediaStreamTrack): void {
