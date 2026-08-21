@@ -94,12 +94,14 @@ How should meeting audio be captured and delivered to speech recognition models?
      - **Heavy Disk & I/O Overhead:** Storing uncompressed audio files for 1,000 concurrent 1-hour meetings requires hundreds of gigabytes of disk storage. Streaming STT processes lightweight ~200ms memory buffers and discards raw PCM immediately after transcription.
      - **End-of-Meeting Processing Delay:** Users have to wait several minutes after a meeting finishes for large audio uploads and batch transcription jobs to complete.
 
-3. **Our Strategy: Continuous Streaming STT (WebSockets over WebRTC):**
-   - Sends 16kHz PCM audio chunks every 100–250ms over a bidirectional WebSocket to Deepgram Nova-2 (or browser-native Web Speech API).
-   - Delivers instant **interim speech hypotheses** (live typing effect in <250ms) followed by **finalized transcript segments** with word-level timestamps and punctuation.
+3. **Our Unified Solution: User-Configurable Dual Modes (Streaming + WebRTC Batch):**
+   - **Mode 1: 🟢 Real-Time Streaming (Default):** Sends 16kHz PCM audio chunks every 100–250ms over a bidirectional WebSocket to Deepgram Nova-2 (or browser-native Web Speech API) for live typing text (<250ms delay).
+   - **Mode 2: 📦 Post-Meeting WebRTC Batch Recording:** Captures incoming WebRTC PCM audio into memory, encodes it into a standard 16kHz WAV file on meeting leave, and uploads to our local FastAPI backend (`POST /api/meetings/{id}/transcribe-batch`) for one-shot batch transcription via Gemini 1.5 / Whisper.
 
-### 💡 Why We Chose Live Streaming STT
-It provides universal meeting support (works on Free & Paid Google accounts), delivers the interactive "live typing" experience on the dashboard, enables future in-meeting AI voice assistant commands, and operates with near-zero disk storage footprint.
+### 💡 Why Supporting Both Gives the Best of Both Worlds
+- **Real-Time Streaming Mode** is ideal for live dashboards, closed captions, and mid-meeting interactive AI assistance.
+- **WebRTC Batch Mode** is ideal for users with low bandwidth or those seeking cost-optimized post-meeting AI summaries without keeping continuous WebSockets open.
+- **Both modes run on 100% Free WebRTC audio** and have zero dependency on Google Workspace paid tiers!
 
 ---
 
@@ -120,9 +122,10 @@ export interface ISTTEngine {
 }
 ```
 
-This enables seamless hot-swapping between:
-1. **`WebSpeechSTTEngine` (Zero-Config):** Uses the browser's built-in `webkitSpeechRecognition` (100% free, zero keys required).
-2. **`DeepgramSTTEngine` (Production-Grade):** Uses Nova-2 streaming WebSockets with sub-250ms latency and word-level timestamps.
+This enables seamless user configuration between 3 distinct engines:
+1. **`WebSpeechSTTEngine` (Zero-Config Streaming):** Uses the browser's built-in `webkitSpeechRecognition` (100% free, zero keys required).
+2. **`DeepgramSTTEngine` (Production-Grade Streaming):** Uses Nova-2 streaming WebSockets with sub-250ms latency and word-level timestamps.
+3. **`BatchRecorderEngine` (WebRTC Batch Mode):** Compiles 16kHz PCM audio into standard WAV payloads and sends them to our local FastAPI backend (`/api/meetings/{id}/transcribe-batch`) for post-meeting AI transcription.
 3. **Future Engines (Whisper / Google Cloud STT):** Can be plugged in by implementing `ISTTEngine` with zero changes to the rest of the application.
 
 ---
