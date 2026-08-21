@@ -184,10 +184,17 @@
     <!-- Live Transcript Box -->
     <div class="card">
       <div class="card-header">
-        <h2>Live Real-Time Transcripts</h2>
-        <div class="actions" style="margin-top: 0; gap: 0.5rem;">
-          <button id="copy-transcript-btn" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Copy Text</button>
-          <button id="clear-transcript-btn" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Clear</button>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <h2>Live Real-Time Transcripts</h2>
+          <span id="ws-status-badge" class="badge badge-disconnected" style="font-size: 0.75rem;">WS Gateway Offline</span>
+        </div>
+        <div class="actions" style="margin-top: 0; gap: 0.4rem; flex-wrap: wrap;">
+          <button id="copy-transcript-btn" class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">Copy Text</button>
+          <button id="export-md-btn" class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">⬇️ Markdown</button>
+          <button id="export-srt-btn" class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">⬇️ SRT Subtitles</button>
+          <button id="export-txt-btn" class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">⬇️ Text</button>
+          <button id="export-json-btn" class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">⬇️ JSON</button>
+          <button id="clear-transcript-btn" class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">Clear</button>
         </div>
       </div>
       <div id="transcript-feed" class="transcript-box">
