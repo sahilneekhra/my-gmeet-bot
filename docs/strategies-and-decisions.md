@@ -78,17 +78,28 @@ Resampling runs in parallel inside the client/worker process. The backend server
 ## Strategy 4: Live Streaming STT vs. Post-Meeting Batch Transcription
 
 ### 🎯 The Problem
-How should audio be delivered to speech recognition models?
+How should meeting audio be captured and delivered to speech recognition models?
 
-### ⚖️ Alternatives Considered
-* **Batch Audio Upload (e.g. recording a `.wav` file and uploading at meeting end):**
-  - *Why rejected:* Users have to wait several minutes after the meeting ends to see any notes or transcripts. Zero live interactive assistant capabilities.
-* **Continuous Streaming STT (WebSockets):**
-  - Sends 16kHz audio chunks every 100–250ms over a bidirectional WebSocket to Deepgram Nova-2.
-  - Receives temporary **interim hypotheses** (live speech preview) followed by **finalized transcript segments** with punctuation and word timestamps.
+### ⚖️ Alternatives Considered & Tradeoffs
+1. **Alternative A: Pure Google REST API Batch (No WebRTC):**
+   - *How it works:* Don't run any WebRTC bot; simply call Google's REST API (`GET /v2/conferenceRecords/{id}/transcripts`) after the meeting ends to download Google's built-in transcript.
+   - *Why Rejected:* **Hard Paywall.** Google only creates this file if the host has a **paid Google Workspace Enterprise/Business subscription** AND manually clicked the native "Record" button during the call. For free `@gmail.com` accounts or standard meetings, Google's REST API provides zero audio and returns empty (`[]`) or `404 Not Found`.
+
+2. **Alternative B: WebRTC Audio Recording + Post-Meeting Batch Upload:**
+   - *How it works:* The bot connects via WebRTC (works for both Free & Paid meetings), records all incoming audio chunks into a `meeting.wav` file on disk, and uploads the entire `.wav` file to an AI speech model (e.g. OpenAI Whisper or Gemini 1.5) after the meeting disconnects.
+   - *Can WebRTC do this?* **Yes, WebRTC is 100% capable of doing this.**
+   - *Why Rejected in favor of Live Streaming STT:*
+     - **No Live In-Meeting Feedback:** Users cannot view live speech bubbles, real-time closed captions, or jumping volume VU meters while the conversation is happening.
+     - **Zero In-Meeting AI Capabilities:** You cannot ask the AI assistant questions mid-call (e.g. *"What did Alex say 5 minutes ago?"*) if the audio hasn't been transcribed yet.
+     - **Heavy Disk & I/O Overhead:** Storing uncompressed audio files for 1,000 concurrent 1-hour meetings requires hundreds of gigabytes of disk storage. Streaming STT processes lightweight ~200ms memory buffers and discards raw PCM immediately after transcription.
+     - **End-of-Meeting Processing Delay:** Users have to wait several minutes after a meeting finishes for large audio uploads and batch transcription jobs to complete.
+
+3. **Our Strategy: Continuous Streaming STT (WebSockets over WebRTC):**
+   - Sends 16kHz PCM audio chunks every 100–250ms over a bidirectional WebSocket to Deepgram Nova-2 (or browser-native Web Speech API).
+   - Delivers instant **interim speech hypotheses** (live typing effect in <250ms) followed by **finalized transcript segments** with word-level timestamps and punctuation.
 
 ### 💡 Why We Chose Live Streaming STT
-It provides the real-time "live typing" experience on the dashboard, allows participants to see live closed captions, and enables real-time AI capabilities (e.g. asking a question to the bot mid-meeting).
+It provides universal meeting support (works on Free & Paid Google accounts), delivers the interactive "live typing" experience on the dashboard, enables future in-meeting AI voice assistant commands, and operates with near-zero disk storage footprint.
 
 ---
 
