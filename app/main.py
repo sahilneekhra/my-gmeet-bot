@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, health, meetings
-
+from app.routers import auth, health, meetings, transcripts
 
 tags_metadata = [
     {"name": "Health", "description": "Service health and useful entry points."},
     {"name": "Authentication", "description": "Google OAuth 2.0 authorization endpoints."},
     {"name": "Meetings", "description": "Read Google Meet conference records and artifacts."},
+    {"name": "Transcripts & Batch Processing", "description": "Live streaming segments and post-meeting batch audio uploads."},
 ]
 
 app = FastAPI(
@@ -37,3 +37,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(meetings.router)
+app.include_router(transcripts.router)
