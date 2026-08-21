@@ -207,10 +207,96 @@ copyTranscriptBtn.addEventListener('click', async () => {
       copyTranscriptBtn.textContent = originalText;
     }, 2000);
     addLog('Transcripts copied to clipboard.', 'info');
-  } catch (err) {
+  } catch {
     addLog('Failed to copy to clipboard', 'warn');
   }
 });
+
+// --- Transcript Export Actions ---
+function triggerDownload(format: 'markdown' | 'srt' | 'txt' | 'json') {
+  const rawSpace = spaceInput.value.trim();
+  const meetingId = rawSpace.includes('meet.google.com/')
+    ? rawSpace.split('meet.google.com/')[1].split('?')[0]
+    : rawSpace.replace(/^spaces\//, '') || 'default-meeting';
+
+  const downloadUrl = `http://localhost:8000/api/meetings/${meetingId}/export?format=${format}`;
+  addLog(`Downloading transcript export in ${format.toUpperCase()} format from ${downloadUrl}...`, 'info');
+  window.open(downloadUrl, '_blank');
+}
+
+const exportMdBtn = document.getElementById('export-md-btn') as HTMLButtonElement;
+const exportSrtBtn = document.getElementById('export-srt-btn') as HTMLButtonElement;
+const exportTxtBtn = document.getElementById('export-txt-btn') as HTMLButtonElement;
+const exportJsonBtn = document.getElementById('export-json-btn') as HTMLButtonElement;
+const wsStatusBadge = document.getElementById('ws-status-badge') as HTMLElement;
+
+exportMdBtn?.addEventListener('click', () => triggerDownload('markdown'));
+exportSrtBtn?.addEventListener('click', () => triggerDownload('srt'));
+exportTxtBtn?.addEventListener('click', () => triggerDownload('txt'));
+exportJsonBtn?.addEventListener('click', () => triggerDownload('json'));
+
+// --- WebSocket Gateway Subscription ---
+let dashboardSocket: WebSocket | null = null;
+
+function initWebSocketGateway(meetingId: string) {
+  if (dashboardSocket) {
+    dashboardSocket.close();
+    dashboardSocket = null;
+  }
+
+  const wsUrl = `ws://localhost:8000/api/ws/transcripts/${meetingId}`;
+  addLog(`Connecting to live WebSocket gateway at ${wsUrl}...`, 'debug');
+
+  try {
+    dashboardSocket = new WebSocket(wsUrl);
+
+    dashboardSocket.onopen = () => {
+      if (wsStatusBadge) {
+        wsStatusBadge.textContent = 'WS Gateway Live';
+        wsStatusBadge.className = 'badge badge-joined';
+      }
+      addLog('Connected to FastAPI WebSocket Gateway! Live transcript broadcast active.', 'info');
+    };
+
+    dashboardSocket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.event === 'segment' && msg.segment) {
+          if (!transcriptHistory.some((s) => s.id === msg.segment.id)) {
+            appendFinalTranscript(msg.segment);
+          }
+        } else if (msg.event === 'history' && Array.isArray(msg.segments)) {
+          if (msg.segments.length > 0 && transcriptHistory.length === 0) {
+            addLog(`Loaded ${msg.segments.length} historical transcript segment(s) from database.`, 'info');
+            for (const seg of msg.segments) {
+              appendFinalTranscript(seg);
+            }
+          }
+        } else if (msg.event === 'batch_complete') {
+          addLog(`📦 Received batch transcription completion event: ${msg.summary}`, 'info');
+        }
+      } catch {
+        // non-json message
+      }
+    };
+
+    dashboardSocket.onclose = () => {
+      if (wsStatusBadge) {
+        wsStatusBadge.textContent = 'WS Gateway Offline';
+        wsStatusBadge.className = 'badge badge-disconnected';
+      }
+    };
+
+    dashboardSocket.onerror = () => {
+      if (wsStatusBadge) {
+        wsStatusBadge.textContent = 'WS Offline';
+        wsStatusBadge.className = 'badge badge-disconnected';
+      }
+    };
+  } catch (err: any) {
+    addLog(`Could not connect to WebSocket Gateway: ${err.message}`, 'debug');
+  }
+}
 
 clearLogsBtn.addEventListener('click', () => {
   logArea.innerHTML = '';
@@ -365,6 +451,9 @@ joinBtn.addEventListener('click', async () => {
   leaveBtn.disabled = false;
   updateSessionStatus('INITIALIZING');
   addLog(`Connecting bot to Google Meet space: ${spaceId}...`, 'info');
+
+  // Connect to live WebSocket Gateway for real-time sync & persistence
+  initWebSocketGateway(spaceId);
 
   try {
     client = new MeetClient({

@@ -63,25 +63,33 @@ The application is structured into two core decoupled subsystems:
 
 ## 3. Remaining Implementation Phases
 
-### Phase 4 — Real-Time Transcript Persistence & WebSockets
+### Phase 4 — Real-Time Transcript Persistence & WebSockets ✅
 **Goal**: Persist transcript segments incrementally and broadcast them live to frontend users.
 
 ```text
-Finalized Segment ──► WebSocket Gateway ──► Live Web UI
+Finalized Segment ──► WebSocket Gateway ──► Live Web UI & Dashboards
          │
          ▼
-Database (SQLite / PostgreSQL)
+SQLite WAL Database (gmeet_bot.db)
  - meeting_id
- - participant_name
+ - speaker & participant_id
  - text
- - start_timestamp
- - end_timestamp
- - sequence_number
+ - timestamps & word timings
+         │
+         ▼
+Multi-Format Exporter (/api/meetings/{id}/export)
+ - Markdown (.md)
+ - Subtitles (.srt)
+ - Plain Text (.txt)
+ - Raw JSON (.json)
 ```
 
-1. Create database schema for Meetings, Participants, and Transcript Segments in FastAPI backend.
-2. Provide WebSocket endpoint `/ws/transcripts/{meeting_id}` for streaming live transcript updates.
-3. Save finalized segments to database every time a speaker finishes a sentence/segment.
+- [x] Created SQLite WAL mode database (`app/services/database.py`) with tables for `meetings` and `transcript_segments`.
+- [x] Built multi-subscriber WebSocket Connection Manager (`app/services/websocket_manager.py`).
+- [x] Added WebSocket gateway endpoint `/api/ws/transcripts/{meeting_id}` with instant history catch-up and live sentence broadcasting (`app/routers/transcripts.py`).
+- [x] Added multi-format transcript export endpoint `/api/meetings/{meeting_id}/export` supporting Markdown, SRT subtitles, Plain Text, and JSON.
+- [x] Integrated real-time WebSocket subscriber status badge and One-Click Download buttons into `meet-client/index.html` & `meet-client/src/demo.ts`.
+- [x] Added automated unit test suite in `tests/test_transcripts_and_ws.py` verifying persistence, exports, and WebSocket live broadcasting.
 
 ---
 

@@ -167,5 +167,70 @@ def get_meeting_transcripts(meeting_id: str) -> List[Dict[str, Any]]:
     return results
 
 
+def seconds_to_srt_time(seconds: float) -> str:
+    millis = int((seconds % 1) * 1000)
+    total_seconds = int(seconds)
+    secs = total_seconds % 60
+    mins = (total_seconds // 60) % 60
+    hours = total_seconds // 3600
+    return f"{hours:02d}:{mins:02d}:{secs:02d},{millis:03d}"
+
+
+def export_transcripts(meeting_id: str, format_type: str = "markdown") -> str:
+    segments = get_meeting_transcripts(meeting_id)
+
+    if format_type == "json":
+        return json.dumps({"meeting_id": meeting_id, "segments": segments}, indent=2)
+
+    if not segments:
+        return f"No transcript recorded for meeting {meeting_id}."
+
+    first_timestamp = segments[0]["timestamp"] if segments else 0.0
+
+    if format_type == "markdown":
+        lines = [
+            f"# Meeting Transcript: {meeting_id}",
+            f"*Total Segments: {len(segments)}*",
+            "",
+            "---",
+            "",
+        ]
+        for seg in segments:
+            time_str = time.strftime("%H:%M:%S", time.localtime(seg["timestamp"]))
+            speaker = seg["speaker"]
+            text = seg["text"]
+            lines.append(f"### `[{time_str}]` **{speaker}**")
+            lines.append(f"> {text}")
+            lines.append("")
+        return "\n".join(lines)
+
+    if format_type == "srt":
+        srt_blocks = []
+        for idx, seg in enumerate(segments, start=1):
+            start = seg.get("start_time")
+            if start is None:
+                start = max(0.0, seg["timestamp"] - first_timestamp)
+            end = seg.get("end_time")
+            if end is None:
+                end = start + 3.5  # default subtitle duration
+
+            start_str = seconds_to_srt_time(start)
+            end_str = seconds_to_srt_time(end)
+            speaker = seg["speaker"]
+            text = seg["text"]
+
+            srt_blocks.append(f"{idx}\n{start_str} --> {end_str}\n[{speaker}]: {text}\n")
+        return "\n".join(srt_blocks)
+
+    if format_type == "txt":
+        txt_lines = []
+        for seg in segments:
+            time_str = time.strftime("%H:%M:%S", time.localtime(seg["timestamp"]))
+            txt_lines.append(f"[{time_str}] {seg['speaker']}: {seg['text']}")
+        return "\n".join(txt_lines)
+
+    return f"Unsupported format '{format_type}'. Supported: markdown, srt, txt, json."
+
+
 # Initialize database tables on module import
 init_db()
