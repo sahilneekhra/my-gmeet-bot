@@ -3,11 +3,14 @@
 A Fireflies-like Google Meet AI bot that connects to live Google Meet conferences via WebRTC, captures audio streams, tracks active speakers, and transcribes speech in real time with Deepgram or browser-native Web Speech API.
 
 ### Key Features
-* 🔗 **Direct WebRTC Client**: Connects to Google Meet Media API without third-party bot vendor lock-in.
-* 🎙️ **Audio Processing Pipeline**: 16kHz resampling and Linear PCM conversion with real-time RMS volume metering.
-* ⚡ **Streaming Speech-to-Text (STT)**: Integrated Deepgram Nova-2 WebSocket streaming and zero-config Web Speech API fallback.
-* 👥 **Speaker Attribution**: Maps data-channel participant identities directly to incoming audio streams.
-* 🖥️ **Live Web UI**: Real-time transcript box with interim typing previews, VU meters, copy-to-clipboard, and OAuth token auto-sync.
+* 🔗 **Direct WebRTC Client**: Connects to Google Meet Media API directly without expensive third-party bot vendor platforms.
+* 🎙️ **Audio Processing Pipeline**: Client-side 16kHz resampling and Linear PCM conversion with real-time RMS volume metering.
+* 🎛️ **Dual Transcription Modes (User-Configurable)**:
+  - 🟢 **Live Streaming Mode**: Deepgram Nova-2 WebSocket streaming (<250ms delay) & browser-native Web Speech API.
+  - 📦 **WebRTC Batch Mode**: Records 16kHz WAV audio in memory and uploads to local FastAPI backend (`POST /api/meetings/{id}/transcribe-batch`) upon leaving the call.
+* 👥 **Deterministic Speaker Attribution**: Maps WebRTC `media-entries` and `participants` data channels directly to speaker audio streams.
+* 💾 **SQLite WAL Persistence Layer**: Non-blocking local database storage for meetings, participants, and transcript segments.
+* 🖥️ **Live Web UI**: Interactive test runner with live speech bubbles, participant VU volume meters, copy actions, and OAuth token auto-sync.
 
 ---
 

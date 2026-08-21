@@ -27,16 +27,20 @@ flowchart TB
         PROC["AudioProcessor (16kHz Resampling + Linear PCM + RMS Meter)"]
         PIPE["TranscriptionPipeline (Speaker Attribution & Multiplexer)"]
         
-        STT_DG["DeepgramSTTEngine (Nova-2 WebSockets)"]
-        STT_WS["WebSpeechSTTEngine (Browser Fallback)"]
+        subgraph STT_ENGINES["Configurable STT Engines (ISTTEngine)"]
+            STT_DG["DeepgramSTTEngine (Nova-2 WebSocket)"]
+            STT_WS["WebSpeechSTTEngine (Browser Fallback)"]
+            STT_BATCH["BatchRecorderEngine (16kHz WAV Recorder)"]
+        end
     end
 
     subgraph BackendAPI["FastAPI Backend (Central Brain & API Gateway)"]
         direction TB
         AUTH["OAuth 2.0 & Token Refresh Manager"]
-        WS_MGR["WebSocket Connection Manager"]
-        CONF_SVC["Conference Records Service"]
-        AI_SVC["AI Meeting Notes & Intelligence Engine"]
+        BATCH_API["Batch Transcriber (POST /api/meetings/{id}/transcribe-batch)"]
+        TRANS_API["Live Segment Endpoint (POST /api/transcripts/{id})"]
+        WS_MGR["WebSocket Broadcast Gateway (/ws/transcripts)"]
+        AI_SVC["AI Meeting Notes & Gemini 1.5 Summarizer"]
         RAG_SVC["Semantic Search & RAG Chatbot"]
         DB_LAYER["Persistence Engine (SQLite WAL / PostgreSQL)"]
     end
@@ -59,24 +63,21 @@ flowchart TB
     SINK --> PROC
     PROC -->|"16kHz Linear PCM Audio Chunks"| PIPE
     DC_PART & DC_MEDIA -.->|"Participant Track Attribution"| PIPE
-    PIPE --> STT_DG & STT_WS
+    PIPE --> STT_DG & STT_WS & STT_BATCH
     
-    %% Streaming & Persistence
-    STT_DG & STT_WS ==>|"Real-Time Transcript Segments"| WEB_UI
-    STT_DG & STT_WS ==>|"POST /api/transcripts"| BackendAPI
-    WS_MGR <===>|"WebSocket /ws/transcripts/{id}"| DASH
+    %% Dual-Mode Delivery & Persistence
+    STT_DG & STT_WS ==>|"1. Real-Time Streaming Segments"| WEB_UI
+    STT_DG & STT_WS ==>|"POST /api/transcripts"| TRANS_API
+    STT_BATCH ==="2. On Leave: Upload meeting.wav"===> BATCH_API
     
-    BackendAPI --> DB_LAYER
+    TRANS_API & BATCH_API --> DB_LAYER
     DB_LAYER --> AI_SVC
     AI_SVC --> RAG_SVC
     RAG_SVC <--> DASH
+    DB_LAYER -.->|"Live Broadcast"| WS_MGR <===>|"WebSocket"| DASH
 ```
 
-
-
 ---
-
-
 
 ## 2. Signaling & WebRTC Media Connection Flow
 
@@ -86,11 +87,12 @@ The Google Meet Media API requires a precise, deterministic transceiver and data
 sequenceDiagram
     autonumber
     participant UI as Browser / Headless Client
-    participant Backend as FastAPI Backend
+    participant Backend as FastAPI Backend (Port 8000)
     participant GoogleAuth as Google OAuth 2.0
     participant MeetAPI as Google Meet Media API
     participant MeetSFU as Google Meet SFU
-    participant STT as Deepgram Live STT
+    participant STT_Live as Live STT (Deepgram / WebSpeech)
+    participant STT_Batch as Batch Engine (Gemini 1.5 / Whisper)
 
     Note over UI,Backend: 1. Authentication & Token Management
     UI->>Backend: GET /auth/token
@@ -116,41 +118,50 @@ sequenceDiagram
 
     Note over UI,MeetSFU: 3. Session Join & Speaker Mapping
     MeetSFU-->>UI: session-control: Session State -> JOINED
-    MeetSFU-->>UI: participants: Resource updates (User IDs & Display Names)
+    MeetSFU-->>UI: participants: User IDs & Display Names
     MeetSFU-->>UI: media-entries: Track to User ID mapping
     MeetSFU-->>UI: Audio Track Received (ontrack)
 
-    Note over UI,STT: 4. DSP Audio Resampling & Live Transcription
-    UI->>UI: Downsample Audio to 16kHz Mono 16-bit PCM
-    UI->>UI: Correlate Track ID with Participant Manager
-    UI->>STT: WebSocket Stream 16kHz PCM Buffer
-    STT-->>UI: Live Transcript Segment (Interim / Final)
-
-    Note over UI,Backend: 5. Persistence & Keepalives
+    Note over UI,MeetSFU: 4. Keepalives (Every 2s)
     loop Every 2 Seconds
         UI->>MeetSFU: media-stats: Inbound RTP Keepalive Report
     end
-    UI->>Backend: POST /api/transcripts (Finalized Segments)
-    Backend->>Backend: Save to Database & Broadcast to WebSockets
+
+    Note over UI,STT_Live: 5. Branch A: Real-Time Streaming STT Mode
+    opt If Mode == "streaming"
+        UI->>UI: Resample Float32 to 16kHz Linear PCM
+        UI->>STT_Live: WebSocket Stream 16kHz PCM Buffer (<250ms)
+        STT_Live-->>UI: Interim & Final Transcript Segments
+        UI->>Backend: POST /api/transcripts/{meeting_id}
+        Backend->>Backend: Save to SQLite (WAL) & Broadcast
+    end
+
+    Note over UI,STT_Batch: 6. Branch B: WebRTC Post-Meeting Batch Mode
+    opt If Mode == "batch"
+        UI->>UI: Buffer 16kHz PCM audio in memory
+        Note over UI: Meeting disconnects / User clicks Leave
+        UI->>UI: Encode accumulated PCM into 16kHz WAV Blob
+        UI->>Backend: POST /api/meetings/{id}/transcribe-batch (meeting.wav)
+        Backend->>STT_Batch: 1-Shot Audio Transcription (Gemini 1.5 / Whisper)
+        STT_Batch-->>Backend: Full Transcript & Summary
+        Backend->>Backend: Save Segments to SQLite (WAL)
+        Backend-->>UI: Return Transcript Segments & Notes
+    end
 ```
-
-
 
 ---
 
-
-
 ## 3. Why We Chose This Architecture (Design Rationale)
 
-
-| Architectural Choice                                       | Why We Chose It                                                                                                                    | What We Avoided (Alternatives Considered)                                                                                              | Key Benefit                                                                                                                             |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Direct Google Meet Media API (WebRTC)**                  | Connects natively as a WebRTC peer directly to Google's SFU. Zero video rendering or screen capture overhead.                      | **Third-party bot vendors (Recall.ai, MeetingBaas)** which charge **$0.50 – $1.00/hour** per meeting.                                  | **95%+ cost reduction**, complete data privacy, and sub-second latency.                                                                 |
-| **Data Channels for Speaker Attribution**                  | Google Meet provides deterministic track-to-participant metadata across WebRTC data channels (`participants` and `media-entries`). | **Acoustic Diarization / Voice Fingerprinting**, which is computationally heavy, error-prone, and struggles with overlapping speakers. | **100% accurate speaker names** without complex machine learning diarization pipelines.                                                 |
-| **Client-Side DSP Resampling (**`AudioProcessor`**)**      | Web Audio API ScriptProcessor/AudioWorklet resamples Float32 audio directly to 16kHz 16-bit Linear PCM in the client thread.       | **Server-side** `ffmpeg` **transcoding**, which consumes huge CPU resources when decoding dozens of concurrent WebRTC streams.         | **Zero server CPU spent on audio transcoding**. The client produces clean 16kHz PCM ready for any STT engine.                           |
-| **Pluggable STT Engine Interface (**`ISTTEngine`**)**      | Standardized interface for streaming PCM audio and receiving normalized `TranscriptSegment` objects.                               | **Hardcoded single-vendor STT**, which causes vendor lock-in and limits cost optimization.                                             | Allows seamless switching between **Deepgram Nova-2** (low latency, high accuracy) and **Web Speech API** (zero-cost browser fallback). |
-| **Periodic Keepalive Reporting (**`MediaStatsHandler`**)** | Collects inbound RTP stats and transmits structured keepalives across the `media-stats` channel every 2 seconds.                   | **Passive WebRTC listeners**, which Google Meet drops after 15–30 seconds due to `SESSION_UNHEALTHY` timeouts.                         | Guarantees stable, long-running meeting sessions without unexpected disconnects.                                                        |
-| **FastAPI + SQLite WAL Mode (MVP) / PostgreSQL (Scale)**   | SQLite with Write-Ahead Logging (WAL) allows concurrent reads and writes with zero external database server overhead.              | **Complex distributed databases** for initial prototypes that increase operational overhead.                                           | Instant zero-config setup, portable single-file database, with seamless migration path to PostgreSQL + pgvector.                        |
+| Architectural Choice | Why We Chose It | What We Avoided (Alternatives Considered) | Key Benefit |
+| :--- | :--- | :--- | :--- |
+| **Direct Google Meet Media API (WebRTC)** | Connects natively as a WebRTC peer directly to Google's SFU. Zero video rendering or screen capture overhead. | **Third-party bot vendors (Recall.ai, MeetingBaas)** which charge **$0.50 – $1.00/hour** per meeting. | **95%+ cost reduction**, complete data privacy, and sub-second latency. |
+| **User-Configurable Dual Modes (Streaming + WebRTC Batch)** | Gives users choice between live captions (<250ms delay) and cost-optimized post-meeting WAV uploads on leave. | **One-size-fits-all rigid models** that force either heavy streaming or delayed post-call processing. | Maximum flexibility: works for live assistance and low-bandwidth batch archiving. |
+| **Data Channels for Speaker Attribution** | Google Meet provides deterministic track-to-participant metadata across WebRTC data channels (`participants` and `media-entries`). | **Acoustic Diarization / Voice Fingerprinting**, which is computationally heavy, error-prone, and struggles with overlapping speakers. | **100% accurate speaker names** without complex machine learning diarization pipelines. |
+| **Client-Side DSP Resampling (`AudioProcessor`)** | Web Audio API resamples Float32 audio directly to 16kHz 16-bit Linear PCM in the client thread. | **Server-side `ffmpeg` transcoding**, which consumes huge CPU resources when decoding dozens of concurrent WebRTC streams. | **Zero server CPU spent on audio transcoding**. The client produces clean 16kHz PCM ready for any STT engine. |
+| **Pluggable STT Engine Interface (`ISTTEngine`)** | Standardized interface for streaming PCM audio and receiving normalized `TranscriptSegment` objects. | **Hardcoded single-vendor STT**, which causes vendor lock-in and limits cost optimization. | Allows seamless switching between **Deepgram Nova-2**, **Web Speech API**, and **BatchRecorderEngine**. |
+| **Periodic Keepalive Reporting (`MediaStatsHandler`)** | Collects inbound RTP stats and transmits structured keepalives across the `media-stats` channel every 2 seconds. | **Passive WebRTC listeners**, which Google Meet drops after 15–30 seconds due to `SESSION_UNHEALTHY` timeouts. | Guarantees stable, long-running meeting sessions without unexpected disconnects. |
+| **FastAPI + SQLite WAL Mode (MVP) / PostgreSQL (Scale)** | SQLite with Write-Ahead Logging (WAL) allows concurrent reads and writes with zero external database server overhead. | **Complex distributed databases** for initial prototypes that increase operational overhead. | Instant zero-config setup, portable single-file database, with seamless migration path to PostgreSQL + pgvector. |
 
 
 ---
