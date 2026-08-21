@@ -1,5 +1,5 @@
 import { MeetClient } from './meet/MeetClient';
-import { STTConfig, TranscriptSegment } from './stt';
+import { BatchRecorderEngine, STTConfig, TranscriptSegment } from './stt';
 import { ParticipantInfo, SessionState } from './types';
 
 let client: MeetClient | null = null;
@@ -62,10 +62,16 @@ function updateSTTStatus(state: 'IDLE' | 'CONNECTING' | 'LISTENING' | 'ERROR') {
 
 // --- STT Engine Toggle ---
 function syncSTTProviderUI() {
+  const tipEl = document.getElementById('stt-tip');
   if (sttProviderSelect.value === 'deepgram') {
     deepgramKeyGroup.style.display = 'flex';
+    if (tipEl) tipEl.textContent = 'Tip: Deepgram streaming requires an API key for live WebSocket transcription.';
+  } else if (sttProviderSelect.value === 'batch') {
+    deepgramKeyGroup.style.display = 'none';
+    if (tipEl) tipEl.textContent = 'Tip: Batch mode records audio in memory and uploads WAV to /api/meetings/{id}/transcribe-batch on Leave.';
   } else {
     deepgramKeyGroup.style.display = 'none';
+    if (tipEl) tipEl.textContent = 'Tip: Web Speech API is 100% free and built into your browser (Chrome/Edge).';
   }
 }
 sttProviderSelect.addEventListener('change', syncSTTProviderUI);
@@ -110,6 +116,19 @@ function updateParticipantVU(participantId: number | undefined, volume: number) 
   }
 }
 
+async function persistSegmentToBackend(segment: TranscriptSegment) {
+  const meetingId = spaceInput.value.trim().replace(/^spaces\//, '') || 'default-meeting';
+  try {
+    await fetch(`http://localhost:8000/api/transcripts/${meetingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(segment),
+    });
+  } catch {
+    // background persistence best-effort
+  }
+}
+
 // --- Live Transcript Handling ---
 function appendFinalTranscript(segment: TranscriptSegment) {
   if (transcriptPlaceholder && transcriptPlaceholder.parentElement === transcriptFeed) {
@@ -117,6 +136,7 @@ function appendFinalTranscript(segment: TranscriptSegment) {
   }
 
   transcriptHistory.push(segment);
+  persistSegmentToBackend(segment);
 
   const segmentEl = document.createElement('div');
   segmentEl.className = 'transcript-segment';
@@ -229,7 +249,7 @@ async function startSTT(): Promise<void> {
     return;
   }
 
-  const provider = sttProviderSelect.value as 'deepgram' | 'webspeech';
+  const provider = sttProviderSelect.value as 'deepgram' | 'webspeech' | 'batch';
   const apiKey = deepgramApiKeyInput.value.trim();
 
   if (provider === 'deepgram' && !apiKey) {
@@ -254,7 +274,11 @@ async function startSTT(): Promise<void> {
     const pipeline = await client.startTranscription(sttConfig);
     isSTTRunning = true;
     updateSTTStatus('LISTENING');
-    addLog(`STT Pipeline running with provider: ${provider}`, 'info');
+    if (provider === 'batch') {
+      addLog('📦 Batch Mode Active: Recording 16kHz PCM audio. WAV will be uploaded and transcribed when you leave the meeting.', 'info');
+    } else {
+      addLog(`STT Pipeline running with provider: ${provider}`, 'info');
+    }
 
     // Handle VU meters via pipeline
     pipeline.onAudioLevel((event) => {
@@ -284,6 +308,38 @@ async function stopSTT(): Promise<void> {
 
 startSttBtn.addEventListener('click', startSTT);
 stopSttBtn.addEventListener('click', stopSTT);
+
+leaveBtn.addEventListener('click', async () => {
+  if (client) {
+    const pipeline = client.getTranscriptionPipeline();
+    const engine = pipeline?.getSTTEngine();
+
+    if (engine instanceof BatchRecorderEngine) {
+      const meetingId = spaceInput.value.trim().replace(/^spaces\//, '') || 'default-meeting';
+      addLog(`📦 [Batch Mode] Meeting ending. Uploading recorded WAV audio (${engine.getDurationSeconds().toFixed(1)}s) to backend for AI transcription...`, 'info');
+      updateSTTStatus('CONNECTING');
+
+      try {
+        const batchSegments = await engine.finalizeAndUpload(meetingId, 'http://localhost:8000');
+        addLog(`📦 [Batch Mode] AI Transcription Complete! Received ${batchSegments.length} segment(s).`, 'info');
+      } catch (uploadErr: any) {
+        addLog(`📦 [Batch Mode] Upload failed: ${uploadErr.message || uploadErr}`, 'error');
+      }
+    }
+
+    addLog('Leaving meeting and disconnecting all sessions...', 'info');
+    await client.disconnect();
+    client = null;
+  }
+  isSTTRunning = false;
+  joinBtn.disabled = false;
+  leaveBtn.disabled = true;
+  startSttBtn.disabled = false;
+  stopSttBtn.disabled = true;
+  updateSessionStatus('DISCONNECTED');
+  updateSTTStatus('IDLE');
+  renderParticipants([]);
+});
 
 // --- Meeting Connection Lifecycle ---
 joinBtn.addEventListener('click', async () => {
@@ -369,18 +425,3 @@ joinBtn.addEventListener('click', async () => {
   }
 });
 
-leaveBtn.addEventListener('click', async () => {
-  if (client) {
-    addLog('Leaving meeting and disconnecting all sessions...', 'info');
-    await client.disconnect();
-    client = null;
-  }
-  isSTTRunning = false;
-  joinBtn.disabled = false;
-  leaveBtn.disabled = true;
-  startSttBtn.disabled = false;
-  stopSttBtn.disabled = true;
-  updateSessionStatus('DISCONNECTED');
-  updateSTTStatus('IDLE');
-  renderParticipants([]);
-});
